@@ -46,6 +46,8 @@ type SavedRecording = {
   events: RecordingEvent[];
 };
 
+type PlaybackCellsInput = Array<string | [number, number]>;
+
 const createGrid = (): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
     Array.from({ length: COLS }, (_, col) => ({
@@ -61,6 +63,29 @@ const cellKey = (row: number, col: number) => `${row}:${col}`;
 const parseCellKey = (key: string): [number, number] => {
   const [row, col] = key.split(":").map(Number);
   return [row, col];
+};
+
+const normalizePlaybackCells = (value: unknown): Array<[number, number]> => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (typeof item === "string") {
+      return [parseCellKey(item)];
+    }
+
+    if (
+      Array.isArray(item) &&
+      item.length === 2 &&
+      typeof item[0] === "number" &&
+      typeof item[1] === "number"
+    ) {
+      return [[item[0], item[1]] as [number, number]];
+    }
+
+    return [];
+  });
 };
 
 const levelImage = (level: number) => `/blooming/${level}.png`;
@@ -222,10 +247,11 @@ export default function Home() {
   }: {
     targetColor: string;
     selectedOnly?: boolean;
-    playbackCells?: Array<[number, number]>;
+    playbackCells?: PlaybackCellsInput;
   }) => {
-    const playbackSet = playbackCells
-      ? new Set(playbackCells.map(([row, col]) => cellKey(row, col)))
+    const normalizedPlaybackCells = playbackCells ? normalizePlaybackCells(playbackCells) : null;
+    const playbackSet = normalizedPlaybackCells
+      ? new Set(normalizedPlaybackCells.map(([row, col]) => cellKey(row, col)))
       : null;
 
     for (let row = 0; row < ROWS; row += 1) {
@@ -295,11 +321,12 @@ export default function Home() {
   }: {
     level: number;
     playback?: boolean;
-    playbackCells?: Array<[number, number]>;
+    playbackCells?: PlaybackCellsInput;
   }) => {
     setBuckleValue(level);
-    const playbackSet = playbackCells
-      ? new Set(playbackCells.map(([row, col]) => cellKey(row, col)))
+    const normalizedPlaybackCells = playbackCells ? normalizePlaybackCells(playbackCells) : null;
+    const playbackSet = normalizedPlaybackCells
+      ? new Set(normalizedPlaybackCells.map(([row, col]) => cellKey(row, col)))
       : null;
 
     updateCells((draft) => {
@@ -485,7 +512,7 @@ export default function Home() {
           </label>
           <button
             onClick={() => {
-              const selectedCells = [...selected].map(parseCellKey);
+              const selectedCells = [...selected];
               captureState("color_selected", { color: currentColor, selected: selectedCells });
               fadeToColor({ targetColor: currentColor, selectedOnly: true });
             }}
@@ -540,7 +567,7 @@ export default function Home() {
               value={buckleValue}
               onChange={(event) => {
                 const level = Number(event.target.value);
-                const selectedCells = [...selected].map(parseCellKey);
+                const selectedCells = [...selected];
                 if (selected.size > 0) {
                   captureState("buckle_selected", { val: String(level), selected: selectedCells });
                 } else {
