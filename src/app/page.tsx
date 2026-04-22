@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   addDoc,
   collection,
+  FirestoreError,
   getDocs,
   limit,
   orderBy,
@@ -137,7 +138,11 @@ export default function Home() {
       setSaveState("Connected to Firebase");
     } catch (error) {
       console.error(error);
-      setSaveState("Could not load Firebase recordings");
+      const message =
+        error instanceof FirestoreError || error instanceof Error
+          ? error.message
+          : "Unknown Firebase read error";
+      setSaveState(`Could not load recordings: ${message}`);
     } finally {
       setLoadingRecordings(false);
     }
@@ -357,7 +362,11 @@ export default function Home() {
       await loadRecordings();
     } catch (error) {
       console.error(error);
-      setSaveState("Save failed");
+      const message =
+        error instanceof FirestoreError || error instanceof Error
+          ? error.message
+          : "Unknown Firebase write error";
+      setSaveState(`Save failed: ${message}`);
     }
   };
 
