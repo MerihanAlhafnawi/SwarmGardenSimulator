@@ -474,25 +474,7 @@ export default function Home() {
     <main className="page-shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">Vercel + Firebase Edition</p>
           <h1>Swarm Garden Simulator</h1>
-          <p className="subtitle">
-            A hosted browser version of your simulator with room for user accounts, saved
-            compositions, and cloud playback records.
-          </p>
-        </div>
-
-        <div className="status-panel">
-          <div className="status-row">
-            <span className="status-label">Selection</span>
-            <span className="status-pill neutral">
-              {selected.size} cell{selected.size === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="status-row">
-            <span className="status-label">Storage</span>
-            <span className="status-pill neutral">{saveState}</span>
-          </div>
         </div>
       </section>
 
@@ -641,7 +623,7 @@ export default function Home() {
           >
             {recording ? "Stop Recording" : "Record"}
           </button>
-          <button onClick={() => void saveRecording()}>Save to Firebase</button>
+          <button onClick={() => void saveRecording()}>Save Recording</button>
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
       </section>
