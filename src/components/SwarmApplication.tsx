@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, FirestoreError, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -38,6 +39,49 @@ type SavedRecording = {
 };
 
 type PlaybackCellsInput = Array<string | [number, number]>;
+type TourStep = {
+  title: string;
+  body: string;
+  targetId: string;
+};
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    targetId: "behaviour-field",
+    title: "Describe the behaviour",
+    body: "Write a short description here before saving so each recorded behaviour is easy to recognize later.",
+  },
+  {
+    targetId: "grid",
+    title: "Select robots",
+    body: "Click robots in the grid to select them. Selected robots are the ones affected by targeted changes.",
+  },
+  {
+    targetId: "color-controls",
+    title: "Color controls",
+    body: "Pick a color, then apply it to selected robots, all robots, or send it through the swarm as a moving flow.",
+  },
+  {
+    targetId: "buckle-controls",
+    title: "Buckle controls",
+    body: "Use the buckle slider or the directional buckle buttons to change bloom levels across the swarm.",
+  },
+  {
+    targetId: "record-controls",
+    title: "Record and save",
+    body: "Press Record to capture your actions, Stop Recording when you are done, then Save Recording to store the behaviour.",
+  },
+  {
+    targetId: "reset-button",
+    title: "Reset",
+    body: "Reset clears selections, restores white backgrounds, and returns every robot to buckle level 11.",
+  },
+  {
+    targetId: "recorded-behaviours",
+    title: "Recorded behaviours",
+    body: "Saved behaviours appear here. You can replay them, download them as JSON, or delete them later.",
+  },
+];
 
 const createGrid = (): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
@@ -99,6 +143,7 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
 
 export default function SwarmApplication() {
+  const searchParams = useSearchParams();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
@@ -110,16 +155,64 @@ export default function SwarmApplication() {
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
   const [saveState, setSaveState] = useState("Firebase not configured");
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStepIndex, setTourStepIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
   const recordingStartRef = useRef<number>(0);
 
   const isFirebaseReady = Boolean(getFirebaseDb());
+  const activeTourStep = TOUR_STEPS[tourStepIndex];
 
   useEffect(() => {
     setSaveState(
       isFirebaseReady ? "Connected to Firebase" : "Add Firebase env vars to enable cloud saves",
     );
   }, [isFirebaseReady]);
+
+  useEffect(() => {
+    const forceTour = searchParams.get("tour") === "1";
+    const hasSeenTour = window.localStorage.getItem("swarm-tour-dismissed") === "true";
+
+    if (forceTour || !hasSeenTour) {
+      setTourOpen(true);
+      setTourStepIndex(0);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!tourOpen) {
+      return;
+    }
+
+    const target = document.querySelector<HTMLElement>(`[data-tour-id="${activeTourStep.targetId}"]`);
+    target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+  }, [activeTourStep, tourOpen]);
+
+  const startTour = () => {
+    setTourStepIndex(0);
+    setTourOpen(true);
+  };
+
+  const closeTour = () => {
+    window.localStorage.setItem("swarm-tour-dismissed", "true");
+    setTourOpen(false);
+  };
+
+  const nextTourStep = () => {
+    if (tourStepIndex === TOUR_STEPS.length - 1) {
+      closeTour();
+      return;
+    }
+
+    setTourStepIndex((current) => current + 1);
+  };
+
+  const previousTourStep = () => {
+    setTourStepIndex((current) => Math.max(0, current - 1));
+  };
+
+  const getTourClass = (targetId: string) =>
+    tourOpen && activeTourStep.targetId === targetId ? "tour-target-active" : "";
 
   const stopFlow = () => {
     for (const timer of timersRef.current) {
@@ -495,14 +588,17 @@ export default function SwarmApplication() {
   return (
     <main className="page-shell">
       <section className="hero">
-        <div>
+        <div className="application-hero">
           <h1>Swarm Garden Simulator</h1>
+          <button className="ghost" onClick={startTour}>
+            Show Tour
+          </button>
         </div>
       </section>
 
       <section className="controls-card">
         <div className="toolbar">
-          <label className="field field-wide">
+          <label className={`field field-wide ${getTourClass("behaviour-field")}`} data-tour-id="behaviour-field">
             <span>Describe a behaviour</span>
             <textarea
               value={recordingNotes}
@@ -513,7 +609,7 @@ export default function SwarmApplication() {
           </label>
         </div>
 
-        <div className="toolbar">
+        <div className={`toolbar ${getTourClass("color-controls")}`} data-tour-id="color-controls">
           <label className="color-picker">
             <span>Robot Color</span>
             <input
@@ -568,7 +664,7 @@ export default function SwarmApplication() {
           </button>
         </div>
 
-        <div className="toolbar">
+        <div className={`toolbar ${getTourClass("buckle-controls")}`} data-tour-id="buckle-controls">
           <label className="slider-group">
             <span>Buckle Level</span>
             <input
@@ -619,7 +715,7 @@ export default function SwarmApplication() {
           </button>
         </div>
 
-        <div className="toolbar">
+        <div className={`toolbar ${getTourClass("record-controls")}`} data-tour-id="record-controls">
           <button
             className={recording ? "stop" : "record"}
             onClick={() => {
@@ -640,13 +736,13 @@ export default function SwarmApplication() {
           <button onClick={() => void saveRecording()}>Save Recording</button>
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
           <div className="toolbar-spacer" />
-          <button className="ghost" onClick={resetSwarm}>
+          <button className={`ghost ${getTourClass("reset-button")}`} data-tour-id="reset-button" onClick={resetSwarm}>
             Reset
           </button>
         </div>
       </section>
 
-      <section className="grid-card">
+      <section className={`grid-card ${getTourClass("grid")}`} data-tour-id="grid">
         <div className="swarm-grid" aria-label="Swarm grid">
           {cells.map((row) =>
             row.map((cell) => {
@@ -673,7 +769,7 @@ export default function SwarmApplication() {
         </div>
       </section>
 
-      <section className="library-card">
+      <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
         <div className="library-header">
           <div>
             <h2>Recorded behaviours</h2>
@@ -716,6 +812,32 @@ export default function SwarmApplication() {
           )}
         </div>
       </section>
+
+      {tourOpen ? (
+        <>
+          <div className="tour-overlay" onClick={closeTour} />
+          <aside className="tour-card" aria-live="polite">
+            <p className="eyebrow">
+              Guided Tour {tourStepIndex + 1}/{TOUR_STEPS.length}
+            </p>
+            <h2>{activeTourStep.title}</h2>
+            <p className="tour-body">{activeTourStep.body}</p>
+            <div className="tour-actions">
+              <button className="ghost" onClick={closeTour}>
+                Skip
+              </button>
+              <div className="tour-actions-right">
+                <button className="ghost" onClick={previousTourStep} disabled={tourStepIndex === 0}>
+                  Back
+                </button>
+                <button onClick={nextTourStep}>
+                  {tourStepIndex === TOUR_STEPS.length - 1 ? "Finish" : "Next"}
+                </button>
+              </div>
+            </div>
+          </aside>
+        </>
+      ) : null}
     </main>
   );
 }

@@ -76,6 +76,13 @@ a {
   margin-bottom: 14px;
 }
 
+.application-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
 .intro-hero {
   width: 100%;
   display: grid;
@@ -167,6 +174,12 @@ h2 {
 
 .toolbar-spacer {
   flex: 1 1 auto;
+}
+
+.tour-target-active {
+  position: relative;
+  z-index: 40;
+  box-shadow: 0 0 0 4px rgba(198, 95, 63, 0.38), 0 14px 34px rgba(77, 54, 31, 0.18);
 }
 
 button,
@@ -322,6 +335,45 @@ button:disabled {
   gap: 10px;
 }
 
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(46, 38, 29, 0.34);
+  z-index: 30;
+}
+
+.tour-card {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 24px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 250, 242, 0.96);
+  box-shadow: 0 24px 60px rgba(77, 54, 31, 0.24);
+  padding: 24px;
+  display: grid;
+  gap: 14px;
+  z-index: 50;
+}
+
+.tour-body {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.tour-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.tour-actions-right {
+  display: flex;
+  gap: 12px;
+}
+
 .video-placeholder {
   min-height: 360px;
   border-radius: 24px;
@@ -402,6 +454,11 @@ button:disabled {
     padding: 16px;
   }
 
+  .application-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .video-placeholder {
     min-height: 220px;
   }
@@ -439,5 +496,18 @@ button:disabled {
   .controls-status-text {
     width: 100%;
     min-height: auto;
+  }
+
+  .tour-card {
+    right: 10px;
+    left: 10px;
+    bottom: 10px;
+    width: auto;
+    padding: 18px;
+  }
+
+  .tour-actions,
+  .tour-actions-right {
+    flex-wrap: wrap;
   }
 }
