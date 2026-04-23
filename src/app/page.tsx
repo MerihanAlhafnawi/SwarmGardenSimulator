@@ -104,7 +104,7 @@ export default function Home() {
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
   const [buckleValue, setBuckleValue] = useState(DEFAULT_LEVEL);
   const [recording, setRecording] = useState(false);
-  const [recordingStatus, setRecordingStatus] = useState("Stopped");
+  const [recordingStatus, setRecordingStatus] = useState("");
   const [recordData, setRecordData] = useState<RecordingEvent[]>([]);
   const [recordingTitle, setRecordingTitle] = useState("Swarm composition");
   const [recordingNotes, setRecordingNotes] = useState("");
@@ -618,6 +618,9 @@ export default function Home() {
           >
             Buckle Center → Out
           </button>
+          <button className="ghost" onClick={stopFlow}>
+            Stop Flow
+          </button>
         </div>
 
         <div className="toolbar">
@@ -626,7 +629,7 @@ export default function Home() {
             onClick={() => {
               if (recording) {
                 setRecording(false);
-                setRecordingStatus("Stopped");
+                setRecordingStatus("Stopped recording");
                 return;
               }
 
@@ -639,13 +642,7 @@ export default function Home() {
             {recording ? "Stop Recording" : "Record"}
           </button>
           <button onClick={() => void saveRecording()}>Save to Firebase</button>
-          <span className={`status-pill controls-status ${recording ? "recording" : "stopped"}`}>
-            {recordingStatus}
-          </span>
-          <button className="ghost" onClick={stopFlow}>
-            Stop Flow
-          </button>
-          <button onClick={() => playbackRecording(recordData)}>Playback Current</button>
+          {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
       </section>
 

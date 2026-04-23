@@ -139,10 +139,12 @@ h2 {
   background: #d6edd9;
 }
 
-.controls-status {
+.controls-status-text {
   display: inline-flex;
   align-items: center;
   min-height: 58px;
+  color: var(--muted);
+  font-size: 1rem;
 }
 
 .controls-card,
@@ -365,8 +367,8 @@ button:disabled {
     justify-content: stretch;
   }
 
-  .controls-status {
+  .controls-status-text {
     width: 100%;
-    justify-content: center;
+    min-height: auto;
   }
 }
