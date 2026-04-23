@@ -54,6 +54,12 @@ a {
   padding: 10px 0 20px;
 }
 
+.intro-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
 .hero,
 .controls-card,
 .grid-card,
@@ -68,6 +74,12 @@ a {
 .hero {
   padding: 34px 38px;
   margin-bottom: 14px;
+}
+
+.intro-hero {
+  width: 100%;
+  display: grid;
+  gap: 28px;
 }
 
 .eyebrow {
@@ -89,6 +101,12 @@ h1 {
 
 h2 {
   font-size: clamp(1.9rem, 3.8vw, 3rem);
+}
+
+.intro-text {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 1.1rem;
 }
 
 .status-row,
@@ -299,6 +317,40 @@ button:disabled {
   gap: 10px;
 }
 
+.video-placeholder {
+  min-height: 360px;
+  border-radius: 24px;
+  border: 1px dashed rgba(116, 83, 54, 0.3);
+  background: rgba(255, 255, 255, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.intro-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.intro-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 58px;
+  padding: 0 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(116, 83, 54, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.intro-next:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
 @media (max-width: 720px) {
   .page-shell {
     width: min(100vw - 20px, 1400px);
@@ -311,6 +363,10 @@ button:disabled {
   .library-card {
     border-radius: 20px;
     padding: 16px;
+  }
+
+  .video-placeholder {
+    min-height: 220px;
   }
 
   .swarm-grid {
