@@ -139,6 +139,12 @@ h2 {
   background: #d6edd9;
 }
 
+.controls-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 58px;
+}
+
 .controls-card,
 .grid-card,
 .library-card {
@@ -357,5 +363,10 @@ button:disabled {
   .library-actions {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .controls-status {
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -484,12 +484,6 @@ export default function Home() {
 
         <div className="status-panel">
           <div className="status-row">
-            <span className="status-label">Recording</span>
-            <span className={`status-pill ${recording ? "recording" : "stopped"}`}>
-              {recordingStatus}
-            </span>
-          </div>
-          <div className="status-row">
             <span className="status-label">Selection</span>
             <span className="status-pill neutral">
               {selected.size} cell{selected.size === 1 ? "" : "s"}
@@ -628,30 +622,30 @@ export default function Home() {
 
         <div className="toolbar">
           <button
-            className="record"
+            className={recording ? "stop" : "record"}
             onClick={() => {
+              if (recording) {
+                setRecording(false);
+                setRecordingStatus("Stopped");
+                return;
+              }
+
               setRecording(true);
               setRecordData([]);
               recordingStartRef.current = performance.now();
               setRecordingStatus("Recording");
             }}
           >
-            Record
+            {recording ? "Stop Recording" : "Record"}
           </button>
-          <button
-            className="stop"
-            onClick={() => {
-              setRecording(false);
-              setRecordingStatus("Stopped");
-            }}
-          >
-            Stop Recording
-          </button>
+          <button onClick={() => void saveRecording()}>Save to Firebase</button>
+          <span className={`status-pill controls-status ${recording ? "recording" : "stopped"}`}>
+            {recordingStatus}
+          </span>
           <button className="ghost" onClick={stopFlow}>
             Stop Flow
           </button>
           <button onClick={() => playbackRecording(recordData)}>Playback Current</button>
-          <button onClick={() => void saveRecording()}>Save to Firebase</button>
         </div>
       </section>
 
