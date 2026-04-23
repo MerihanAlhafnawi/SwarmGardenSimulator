@@ -448,6 +448,34 @@ export default function Home() {
     });
   };
 
+  const downloadRecordingsJson = () => {
+    if (savedRecordings.length === 0) {
+      setSaveState("No saved recordings to download");
+      return;
+    }
+
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      count: savedRecordings.length,
+      recordings: savedRecordings,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStamp = new Date().toISOString().slice(0, 10);
+
+    link.href = url;
+    link.download = `swarm-garden-recordings-${dateStamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSaveState("Downloaded recordings JSON");
+  };
+
   return (
     <main className="page-shell">
       <section className="hero">
@@ -666,9 +694,14 @@ export default function Home() {
             <p className="eyebrow">Saved Recordings</p>
             <h2>Firestore Library</h2>
           </div>
-          <button className="ghost" onClick={() => void loadRecordings()}>
-            {loadingRecordings ? "Refreshing..." : "Refresh"}
-          </button>
+          <div className="library-actions">
+            <button className="ghost" onClick={downloadRecordingsJson}>
+              Download JSON
+            </button>
+            <button className="ghost" onClick={() => void loadRecordings()}>
+              {loadingRecordings ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
         </div>
 
         <div className="recording-list">

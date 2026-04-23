@@ -286,6 +286,13 @@ button.ghost {
   color: var(--muted);
 }
 
+.library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
 @media (max-width: 960px) {
   .hero {
     flex-direction: column;
@@ -329,5 +336,10 @@ button.ghost {
   .slider-group input {
     flex: 1;
     min-width: 0;
+  }
+
+  .library-actions {
+    width: 100%;
+    justify-content: stretch;
   }
 }
