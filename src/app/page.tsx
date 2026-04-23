@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { addDoc, collection, FirestoreError, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, FirestoreError, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 
 const ROWS = 3;
@@ -110,6 +110,7 @@ export default function Home() {
   const [recordingNotes, setRecordingNotes] = useState("");
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
   const [saveState, setSaveState] = useState("Firebase not configured");
+  const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const timersRef = useRef<number[]>([]);
   const recordingStartRef = useRef<number>(0);
 
@@ -436,6 +437,39 @@ export default function Home() {
     setSaveState("Downloaded recordings JSON");
   };
 
+  const deleteRecording = async (recordingId: string) => {
+    const confirmed = window.confirm(
+      "Are you sure? This will be permanent and delete the entry from the database.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const db = getFirebaseDb();
+    if (!db) {
+      setSaveState("Firebase env vars missing");
+      return;
+    }
+
+    setDeletingRecordingId(recordingId);
+
+    try {
+      await deleteDoc(doc(db, "recordings", recordingId));
+      setSavedRecordings((current) => current.filter((recording) => recording.id !== recordingId));
+      setSaveState("Recording deleted permanently");
+    } catch (error) {
+      console.error(error);
+      const message =
+        error instanceof FirestoreError || error instanceof Error
+          ? error.message
+          : "Unknown Firebase delete error";
+      setSaveState(`Delete failed: ${message}`);
+    } finally {
+      setDeletingRecordingId(null);
+    }
+  };
+
   return (
     <main className="page-shell">
       <section className="hero">
@@ -676,7 +710,16 @@ export default function Home() {
                 <p className="recording-notes">{recordingItem.notes || "No notes yet."}</p>
                 <div className="recording-actions">
                   <span>{recordingItem.events.length} events</span>
-                  <button onClick={() => playbackRecording(recordingItem.events)}>Play</button>
+                  <div className="recording-buttons">
+                    <button onClick={() => playbackRecording(recordingItem.events)}>Play</button>
+                    <button
+                      className="danger"
+                      onClick={() => void deleteRecording(recordingItem.id)}
+                      disabled={deletingRecordingId === recordingItem.id}
+                    >
+                      {deletingRecordingId === recordingItem.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))
