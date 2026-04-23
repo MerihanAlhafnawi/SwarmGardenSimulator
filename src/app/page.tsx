@@ -316,13 +316,13 @@ export default function Home() {
   const saveRecording = async () => {
     if (!recordData.length) {
       setSaveState("Record something before saving");
-      return;
+      return false;
     }
 
     const db = getFirebaseDb();
     if (!db) {
       setSaveState("Firebase env vars missing");
-      return;
+      return false;
     }
 
     try {
@@ -347,6 +347,7 @@ export default function Home() {
         ...current,
       ]);
       setSaveState("Saved to Firestore for this session");
+      return true;
     } catch (error) {
       console.error(error);
       const message =
@@ -354,7 +355,22 @@ export default function Home() {
           ? error.message
           : "Unknown Firebase write error";
       setSaveState(`Save failed: ${message}`);
+      return false;
     }
+  };
+
+  const resetSwarm = () => {
+    stopFlow();
+    setSelected(new Set());
+    setBuckleValue(DEFAULT_LEVEL);
+    updateCells((draft) => {
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let col = 0; col < COLS; col += 1) {
+          draft[row][col].level = DEFAULT_LEVEL;
+          draft[row][col].color = "#ffffff";
+        }
+      }
+    });
   };
 
   const runPlaybackAction = (entry: RecordingEvent) => {
@@ -599,10 +615,23 @@ export default function Home() {
         <div className="toolbar">
           <button
             className={recording ? "stop" : "record"}
-            onClick={() => {
+            onClick={async () => {
               if (recording) {
                 setRecording(false);
                 setRecordingStatus("Stopped recording");
+
+                if (recordData.length > 0) {
+                  const shouldSave = window.confirm(
+                    "Do you want to save this recording? You can delete it later.",
+                  );
+
+                  if (shouldSave) {
+                    const saved = await saveRecording();
+                    if (saved) {
+                      setRecordingStatus("Stopped recording and saved");
+                    }
+                  }
+                }
                 return;
               }
 
@@ -614,7 +643,9 @@ export default function Home() {
           >
             {recording ? "Stop Recording" : "Record"}
           </button>
-          <button onClick={() => void saveRecording()}>Save Recording</button>
+          <button className="ghost" onClick={resetSwarm}>
+            Reset
+          </button>
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
       </section>
