@@ -2,16 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import {
-  addDoc,
-  collection,
-  FirestoreError,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  serverTimestamp,
-} from "firebase/firestore";
+import { addDoc, collection, FirestoreError, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 
 const ROWS = 3;
@@ -118,7 +109,6 @@ export default function Home() {
   const [recordingTitle, setRecordingTitle] = useState("Swarm composition");
   const [recordingNotes, setRecordingNotes] = useState("");
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
-  const [loadingRecordings, setLoadingRecordings] = useState(false);
   const [saveState, setSaveState] = useState("Firebase not configured");
   const timersRef = useRef<number[]>([]);
   const recordingStartRef = useRef<number>(0);
@@ -126,52 +116,10 @@ export default function Home() {
   const isFirebaseReady = Boolean(getFirebaseDb());
 
   useEffect(() => {
-    if (!isFirebaseReady) {
-      setSaveState("Add Firebase env vars to enable cloud saves");
-      return;
-    }
-
-    void loadRecordings();
+    setSaveState(
+      isFirebaseReady ? "Connected to Firebase" : "Add Firebase env vars to enable cloud saves",
+    );
   }, [isFirebaseReady]);
-
-  const loadRecordings = async () => {
-    const db = getFirebaseDb();
-    if (!db) {
-      return;
-    }
-
-    setLoadingRecordings(true);
-    try {
-      const recordingsQuery = query(
-        collection(db, "recordings"),
-        orderBy("createdAt", "desc"),
-        limit(12),
-      );
-      const snapshot = await getDocs(recordingsQuery);
-      const nextRecordings = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        const createdAt = data.createdAt?.toDate?.();
-        return {
-          id: doc.id,
-          title: String(data.title ?? "Untitled recording"),
-          notes: String(data.notes ?? ""),
-          createdAtLabel: createdAt ? createdAt.toLocaleString() : "Pending timestamp",
-          events: Array.isArray(data.events) ? (data.events as RecordingEvent[]) : [],
-        };
-      });
-      setSavedRecordings(nextRecordings);
-      setSaveState("Connected to Firebase");
-    } catch (error) {
-      console.error(error);
-      const message =
-        error instanceof FirestoreError || error instanceof Error
-          ? error.message
-          : "Unknown Firebase read error";
-      setSaveState(`Could not load recordings: ${message}`);
-    } finally {
-      setLoadingRecordings(false);
-    }
-  };
 
   const stopFlow = () => {
     for (const timer of timersRef.current) {
@@ -378,15 +326,27 @@ export default function Home() {
     }
 
     try {
-      await addDoc(collection(db, "recordings"), {
+      const payload = {
         title: recordingTitle,
         notes: recordingNotes,
         events: recordData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
-      setSaveState("Saved to Firestore");
-      await loadRecordings();
+      };
+
+      const docRef = await addDoc(collection(db, "recordings"), payload);
+
+      setSavedRecordings((current) => [
+        {
+          id: docRef.id,
+          title: recordingTitle,
+          notes: recordingNotes,
+          createdAtLabel: new Date().toLocaleString(),
+          events: recordData,
+        },
+        ...current,
+      ]);
+      setSaveState("Saved to Firestore for this session");
     } catch (error) {
       console.error(error);
       const message =
@@ -691,15 +651,12 @@ export default function Home() {
       <section className="library-card">
         <div className="library-header">
           <div>
-            <p className="eyebrow">Saved Recordings</p>
-            <h2>Firestore Library</h2>
+            <p className="eyebrow">Session Recordings</p>
+            <h2>Current Session</h2>
           </div>
           <div className="library-actions">
             <button className="ghost" onClick={downloadRecordingsJson}>
               Download JSON
-            </button>
-            <button className="ghost" onClick={() => void loadRecordings()}>
-              {loadingRecordings ? "Refreshing..." : "Refresh"}
             </button>
           </div>
         </div>
@@ -707,7 +664,7 @@ export default function Home() {
         <div className="recording-list">
           {savedRecordings.length === 0 ? (
             <p className="empty-state">
-              No cloud recordings yet. Add Firebase env vars, record a sequence, and save it here.
+              No recordings saved in this session yet. Save a sequence and it will appear here.
             </p>
           ) : (
             savedRecordings.map((recordingItem) => (
