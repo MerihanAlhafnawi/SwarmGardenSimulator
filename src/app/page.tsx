@@ -106,7 +106,6 @@ export default function Home() {
   const [recording, setRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [recordData, setRecordData] = useState<RecordingEvent[]>([]);
-  const [recordingTitle, setRecordingTitle] = useState("Swarm composition");
   const [recordingNotes, setRecordingNotes] = useState("");
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
   const [saveState, setSaveState] = useState("Firebase not configured");
@@ -328,7 +327,7 @@ export default function Home() {
 
     try {
       const payload = {
-        title: recordingTitle,
+        title: recordingNotes || "Untitled behavior",
         notes: recordingNotes,
         events: recordData,
         createdAt: serverTimestamp(),
@@ -340,7 +339,7 @@ export default function Home() {
       setSavedRecordings((current) => [
         {
           id: docRef.id,
-          title: recordingTitle,
+          title: recordingNotes || "Untitled behavior",
           notes: recordingNotes,
           createdAtLabel: new Date().toLocaleString(),
           events: recordData,
@@ -480,20 +479,12 @@ export default function Home() {
 
       <section className="controls-card">
         <div className="toolbar">
-          <label className="field">
-            <span>Recording Title</span>
-            <input
-              value={recordingTitle}
-              onChange={(event) => setRecordingTitle(event.target.value)}
-              placeholder="Name this swarm behavior"
-            />
-          </label>
           <label className="field field-wide">
-            <span>Notes</span>
+            <span>Describe a behaviour</span>
             <textarea
               value={recordingNotes}
               onChange={(event) => setRecordingNotes(event.target.value)}
-              placeholder="Describe the behavior or intent"
+              placeholder="Type here"
               rows={2}
             />
           </label>
@@ -658,8 +649,7 @@ export default function Home() {
       <section className="library-card">
         <div className="library-header">
           <div>
-            <p className="eyebrow">Session Recordings</p>
-            <h2>Current Session</h2>
+            <h2>Recorded behaviours</h2>
           </div>
           <div className="library-actions">
             <button className="ghost" onClick={downloadRecordingsJson}>
