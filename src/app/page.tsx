@@ -16,6 +16,9 @@ export default function HomePage() {
         </div>
 
         <div className="intro-actions">
+          <Link href="/tutorial" className="intro-next ghost-link">
+            Tutorial
+          </Link>
           <Link href="/application" className="intro-next">
             Next
           </Link>
