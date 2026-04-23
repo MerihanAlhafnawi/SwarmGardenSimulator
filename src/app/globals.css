@@ -142,6 +142,10 @@ h2 {
   margin-top: 14px;
 }
 
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
 button,
 .color-picker,
 .slider-group,
@@ -333,6 +337,10 @@ button:disabled {
   .library-actions {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .toolbar-spacer {
+    display: none;
   }
 
   .controls-status-text {

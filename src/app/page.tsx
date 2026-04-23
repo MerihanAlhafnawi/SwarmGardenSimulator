@@ -319,6 +319,13 @@ export default function Home() {
       return false;
     }
 
+    const trimmedNotes = recordingNotes.trim();
+    if (!trimmedNotes) {
+      window.alert("Please describe a behaviour before saving.");
+      setSaveState("Add a behaviour description before saving");
+      return false;
+    }
+
     const db = getFirebaseDb();
     if (!db) {
       setSaveState("Firebase env vars missing");
@@ -327,8 +334,8 @@ export default function Home() {
 
     try {
       const payload = {
-        title: recordingNotes || "Untitled behavior",
-        notes: recordingNotes,
+        title: trimmedNotes,
+        notes: trimmedNotes,
         events: recordData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -339,8 +346,8 @@ export default function Home() {
       setSavedRecordings((current) => [
         {
           id: docRef.id,
-          title: recordingNotes || "Untitled behavior",
-          notes: recordingNotes,
+          title: trimmedNotes,
+          notes: trimmedNotes,
           createdAtLabel: new Date().toLocaleString(),
           events: recordData,
         },
@@ -643,10 +650,11 @@ export default function Home() {
           >
             {recording ? "Stop Recording" : "Record"}
           </button>
+          {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
+          <div className="toolbar-spacer" />
           <button className="ghost" onClick={resetSwarm}>
             Reset
           </button>
-          {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
       </section>
 
