@@ -622,23 +622,10 @@ export default function Home() {
         <div className="toolbar">
           <button
             className={recording ? "stop" : "record"}
-            onClick={async () => {
+            onClick={() => {
               if (recording) {
                 setRecording(false);
-                setRecordingStatus("Stopped recording");
-
-                if (recordData.length > 0) {
-                  const shouldSave = window.confirm(
-                    "Do you want to save this recording? You can delete it later.",
-                  );
-
-                  if (shouldSave) {
-                    const saved = await saveRecording();
-                    if (saved) {
-                      setRecordingStatus("Stopped recording and saved");
-                    }
-                  }
-                }
+                setRecordingStatus("Don’t forget to save");
                 return;
               }
 
@@ -650,6 +637,7 @@ export default function Home() {
           >
             {recording ? "Stop Recording" : "Record"}
           </button>
+          <button onClick={() => void saveRecording()}>Save Recording</button>
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
           <div className="toolbar-spacer" />
           <button className="ghost" onClick={resetSwarm}>
