@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, FirestoreError, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -142,8 +141,7 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
 
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
 
-export default function SwarmApplication() {
-  const searchParams = useSearchParams();
+export default function SwarmApplication({ forceTour = false }: { forceTour?: boolean }) {
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
@@ -170,14 +168,13 @@ export default function SwarmApplication() {
   }, [isFirebaseReady]);
 
   useEffect(() => {
-    const forceTour = searchParams.get("tour") === "1";
     const hasSeenTour = window.localStorage.getItem("swarm-tour-dismissed") === "true";
 
     if (forceTour || !hasSeenTour) {
       setTourOpen(true);
       setTourStepIndex(0);
     }
-  }, [searchParams]);
+  }, [forceTour]);
 
   useEffect(() => {
     if (!tourOpen) {
