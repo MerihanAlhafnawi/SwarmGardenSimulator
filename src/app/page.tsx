@@ -16,10 +16,7 @@ export default function HomePage() {
         </div>
 
         <div className="intro-actions">
-          <Link href="/application?tour=1" className="intro-next ghost-link">
-            Guided Tour
-          </Link>
-          <Link href="/application" className="intro-next">
+          <Link href="/application?tour=1" className="intro-next">
             Next
           </Link>
         </div>

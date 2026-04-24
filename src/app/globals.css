@@ -409,10 +409,6 @@ button:disabled {
   background: rgba(255, 255, 255, 0.95);
 }
 
-.ghost-link {
-  background: rgba(239, 232, 220, 0.82);
-}
-
 .tutorial-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

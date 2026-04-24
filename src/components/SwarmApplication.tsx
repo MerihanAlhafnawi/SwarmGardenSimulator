@@ -140,6 +140,7 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
   start.map((value, index) => Math.round(value + (end[index] - value) * t));
 
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
+const TOUR_SELECTION = ["1:4", "1:5", "1:6"];
 
 export default function SwarmApplication({ forceTour = false }: { forceTour?: boolean }) {
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
@@ -185,6 +186,50 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
     target?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
   }, [activeTourStep, tourOpen]);
 
+  useEffect(() => {
+    if (!tourOpen) {
+      return;
+    }
+
+    stopFlow();
+
+    if (activeTourStep.targetId === "grid") {
+      setSelected(new Set(TOUR_SELECTION));
+      return;
+    }
+
+    if (activeTourStep.targetId === "color-controls") {
+      setSelected(new Set(TOUR_SELECTION));
+      setCurrentColor("#d86b4b");
+      fadeToColor({
+        targetColor: "#d86b4b",
+        playbackCells: TOUR_SELECTION,
+      });
+      return;
+    }
+
+    if (activeTourStep.targetId === "buckle-controls") {
+      setSelected(new Set(TOUR_SELECTION));
+      setBuckleLevel({ level: 6, playback: true, playbackCells: TOUR_SELECTION });
+      return;
+    }
+
+    if (activeTourStep.targetId === "record-controls") {
+      setRecordingStatus("Recording");
+      return;
+    }
+
+    if (activeTourStep.targetId === "reset-button") {
+      resetSwarm();
+      return;
+    }
+
+    if (activeTourStep.targetId === "recorded-behaviours") {
+      setRecordingStatus("");
+      setSelected(new Set());
+    }
+  }, [activeTourStep.targetId, tourOpen]);
+
   const startTour = () => {
     setTourStepIndex(0);
     setTourOpen(true);
@@ -192,6 +237,8 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
 
   const closeTour = () => {
     window.localStorage.setItem("swarm-tour-dismissed", "true");
+    setRecordingStatus("");
+    setSelected(new Set());
     setTourOpen(false);
   };
 
