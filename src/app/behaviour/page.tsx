@@ -51,6 +51,7 @@ const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...
 export default function BehaviourPage() {
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
   const [description, setDescription] = useState("");
+  const [message, setMessage] = useState("");
   const timersRef = useRef<number[]>([]);
 
   const stopDemo = () => {
@@ -119,6 +120,15 @@ export default function BehaviourPage() {
     return () => stopDemo();
   }, []);
 
+  const handleNext = () => {
+    if (!description.trim()) {
+      setMessage("Please type a description of this behaviour in your own words");
+      return;
+    }
+
+    setMessage("");
+  };
+
   return (
     <main className="page-shell">
       <section className="hero behaviour-hero">
@@ -138,6 +148,10 @@ export default function BehaviourPage() {
             rows={3}
           />
         </label>
+        <div className="behaviour-actions">
+          <button onClick={handleNext}>Next</button>
+          {message ? <p className="behaviour-message">{message}</p> : null}
+        </div>
       </section>
 
       <section className="grid-card">

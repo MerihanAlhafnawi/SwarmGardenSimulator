@@ -95,6 +95,16 @@ a {
   gap: 16px;
 }
 
+.behaviour-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.behaviour-message {
+  color: #8a2f21;
+}
+
 .tutorial-hero {
   display: grid;
   gap: 28px;
