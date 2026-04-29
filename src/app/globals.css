@@ -261,6 +261,21 @@ button:disabled {
   font-size: 1rem;
 }
 
+.prompt-panel {
+  align-content: start;
+}
+
+.prompt-text {
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(116, 83, 54, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+}
+
 .color-picker,
 .slider-group {
   display: inline-flex;

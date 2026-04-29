@@ -17,6 +17,7 @@ const HOP_DELAY = 120;
 const START_OFFSET = 1000;
 const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
+const SIMULATION_PROMPT = "a sun rising over a garden";
 
 type Cell = {
   row: number;
@@ -48,9 +49,9 @@ type TourStep = {
 
 const TOUR_STEPS: TourStep[] = [
   {
-    targetId: "behaviour-field",
-    title: "Describe the behaviour",
-    body: "Write a short description here before saving so each recorded behaviour is easy to recognize later.",
+    targetId: "prompt-panel",
+    title: "Prompt",
+    body: "This sentence is the behaviour prompt you are implementing in the simulator.",
   },
   {
     targetId: "grid",
@@ -154,7 +155,6 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
   const [recording, setRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [recordData, setRecordData] = useState<RecordingEvent[]>([]);
-  const [recordingNotes, setRecordingNotes] = useState("");
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
   const [saveState, setSaveState] = useState("Firebase not configured");
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
@@ -472,13 +472,6 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       return false;
     }
 
-    const trimmedNotes = recordingNotes.trim();
-    if (!trimmedNotes) {
-      window.alert("Please describe a behaviour before saving.");
-      setSaveState("Add a behaviour description before saving");
-      return false;
-    }
-
     const db = getFirebaseDb();
     if (!db) {
       setSaveState("Firebase env vars missing");
@@ -488,13 +481,13 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
     try {
       storeParticipantNumber(trimmedParticipantNumber);
       const payload = {
-        title: trimmedNotes,
-        notes: trimmedNotes,
+        title: SIMULATION_PROMPT,
+        notes: SIMULATION_PROMPT,
         events: recordData,
         participantNumber: trimmedParticipantNumber,
         step: "simulation",
         data: {
-          description: trimmedNotes,
+          description: SIMULATION_PROMPT,
           events: recordData,
         },
         createdAt: serverTimestamp(),
@@ -506,7 +499,7 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
         participantNumber: trimmedParticipantNumber,
         step: "simulation",
         data: {
-          description: trimmedNotes,
+          description: SIMULATION_PROMPT,
           events: recordData,
         },
       });
@@ -514,8 +507,8 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       setSavedRecordings((current) => [
         {
           id: docRef.id,
-          title: trimmedNotes,
-          notes: trimmedNotes,
+          title: SIMULATION_PROMPT,
+          notes: SIMULATION_PROMPT,
           createdAtLabel: new Date().toLocaleString(),
           events: recordData,
         },
@@ -684,15 +677,10 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
               placeholder="Type here"
             />
           </label>
-          <label className={`field field-wide ${getTourClass("behaviour-field")}`} data-tour-id="behaviour-field">
-            <span>Describe a behaviour</span>
-            <textarea
-              value={recordingNotes}
-              onChange={(event) => setRecordingNotes(event.target.value)}
-              placeholder="Type here"
-              rows={2}
-            />
-          </label>
+          <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
+            <span>Prompt</span>
+            <p className="prompt-text">{SIMULATION_PROMPT}</p>
+          </div>
         </div>
 
         <div className={`toolbar ${getTourClass("color-controls")}`} data-tour-id="color-controls">
