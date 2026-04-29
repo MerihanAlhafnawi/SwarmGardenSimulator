@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const ROWS = 3;
@@ -49,6 +50,7 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
 
 export default function BehaviourPage() {
+  const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
@@ -127,6 +129,7 @@ export default function BehaviourPage() {
     }
 
     setMessage("");
+    router.push("/application");
   };
 
   return (
