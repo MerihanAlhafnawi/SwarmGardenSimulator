@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, FirestoreError, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
+import { getStoredParticipantNumber, saveStudyStep, storeParticipantNumber } from "@/lib/study";
 
 const ROWS = 3;
 const COLS = 12;
@@ -146,6 +147,7 @@ const TOUR_SELECTION = ["1:4", "1:5", "1:6"];
 export default function SwarmApplication({ forceTour = false }: { forceTour?: boolean }) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
+  const [participantNumber, setParticipantNumber] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
   const [buckleValue, setBuckleValue] = useState(DEFAULT_LEVEL);
@@ -169,6 +171,10 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       isFirebaseReady ? "Connected to Firebase" : "Add Firebase env vars to enable cloud saves",
     );
   }, [isFirebaseReady]);
+
+  useEffect(() => {
+    setParticipantNumber(getStoredParticipantNumber());
+  }, []);
 
   useEffect(() => {
     const hasSeenTour = window.localStorage.getItem("swarm-tour-dismissed") === "true";
@@ -459,6 +465,13 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       return false;
     }
 
+    const trimmedParticipantNumber = participantNumber.trim();
+    if (!trimmedParticipantNumber) {
+      window.alert("Please enter your participant number before saving.");
+      setSaveState("Add your participant number before saving");
+      return false;
+    }
+
     const trimmedNotes = recordingNotes.trim();
     if (!trimmedNotes) {
       window.alert("Please describe a behaviour before saving.");
@@ -473,15 +486,30 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
     }
 
     try {
+      storeParticipantNumber(trimmedParticipantNumber);
       const payload = {
         title: trimmedNotes,
         notes: trimmedNotes,
         events: recordData,
+        participantNumber: trimmedParticipantNumber,
+        step: "simulation",
+        data: {
+          description: trimmedNotes,
+          events: recordData,
+        },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
       const docRef = await addDoc(collection(db, "recordings"), payload);
+      await saveStudyStep({
+        participantNumber: trimmedParticipantNumber,
+        step: "simulation",
+        data: {
+          description: trimmedNotes,
+          events: recordData,
+        },
+      });
 
       setSavedRecordings((current) => [
         {
@@ -645,6 +673,17 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
 
       <section className="controls-card">
         <div className="toolbar">
+          <label className="field">
+            <span>Participant number</span>
+            <input
+              value={participantNumber}
+              onChange={(event) => {
+                setParticipantNumber(event.target.value);
+                storeParticipantNumber(event.target.value);
+              }}
+              placeholder="Type here"
+            />
+          </label>
           <label className={`field field-wide ${getTourClass("behaviour-field")}`} data-tour-id="behaviour-field">
             <span>Describe a behaviour</span>
             <textarea

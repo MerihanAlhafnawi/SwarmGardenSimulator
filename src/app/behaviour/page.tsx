@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { getStoredParticipantNumber, saveStudyStep, storeParticipantNumber } from "@/lib/study";
 
 const ROWS = 3;
 const COLS = 12;
@@ -52,9 +53,14 @@ const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...
 export default function BehaviourPage() {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
+  const [participantNumber, setParticipantNumber] = useState("");
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
   const timersRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    setParticipantNumber(getStoredParticipantNumber());
+  }, []);
 
   const stopDemo = () => {
     for (const timer of timersRef.current) {
@@ -122,14 +128,34 @@ export default function BehaviourPage() {
     return () => stopDemo();
   }, []);
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    const trimmedParticipantNumber = participantNumber.trim();
     if (!description.trim()) {
       setMessage("Please type a description of this behaviour in your own words");
       return;
     }
 
-    setMessage("");
-    router.push("/application");
+    if (!trimmedParticipantNumber) {
+      setMessage("Please enter your participant number");
+      return;
+    }
+
+    try {
+      storeParticipantNumber(trimmedParticipantNumber);
+      await saveStudyStep({
+        participantNumber: trimmedParticipantNumber,
+        step: "describe-behaviour",
+        data: {
+          description: description.trim(),
+          stimulus: "color left-to-right blue",
+        },
+      });
+      setMessage("");
+      router.push("/application");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Could not save your response";
+      setMessage(errorMessage);
+    }
   };
 
   return (
@@ -142,6 +168,17 @@ export default function BehaviourPage() {
       </section>
 
       <section className="controls-card behaviour-card">
+        <label className="field">
+          <span>Participant number</span>
+          <input
+            value={participantNumber}
+            onChange={(event) => {
+              setParticipantNumber(event.target.value);
+              storeParticipantNumber(event.target.value);
+            }}
+            placeholder="Type here"
+          />
+        </label>
         <label className="field field-wide">
           <span>Describe the behaviour</span>
           <textarea
@@ -152,7 +189,7 @@ export default function BehaviourPage() {
           />
         </label>
         <div className="behaviour-actions">
-          <button onClick={handleNext}>Next</button>
+          <button onClick={() => void handleNext()}>Next</button>
           {message ? <p className="behaviour-message">{message}</p> : null}
         </div>
       </section>
