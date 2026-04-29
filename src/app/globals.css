@@ -89,6 +89,12 @@ a {
   gap: 28px;
 }
 
+.behaviour-hero,
+.behaviour-card {
+  display: grid;
+  gap: 16px;
+}
+
 .tutorial-hero {
   display: grid;
   gap: 28px;
@@ -291,6 +297,10 @@ button:disabled {
 .swarm-cell.selected {
   border-color: #d14b2a;
   box-shadow: 0 0 0 3px rgba(209, 75, 42, 0.2);
+}
+
+.behaviour-cell {
+  cursor: default;
 }
 
 .swarm-image {

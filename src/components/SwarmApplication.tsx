@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, FirestoreError, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -143,6 +144,7 @@ const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...
 const TOUR_SELECTION = ["1:4", "1:5", "1:6"];
 
 export default function SwarmApplication({ forceTour = false }: { forceTour?: boolean }) {
+  const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
@@ -245,6 +247,7 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
   const nextTourStep = () => {
     if (tourStepIndex === TOUR_STEPS.length - 1) {
       closeTour();
+      router.push("/behaviour");
       return;
     }
 
