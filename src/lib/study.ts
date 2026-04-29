@@ -33,7 +33,7 @@ export async function saveStudyStep({
     throw new Error("Firebase env vars missing");
   }
 
-  return addDoc(collection(db, "studyResponses"), {
+  return addDoc(collection(db, "recordings"), {
     participantNumber,
     step,
     data,
