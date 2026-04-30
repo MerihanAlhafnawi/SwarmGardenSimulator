@@ -20,7 +20,7 @@ const BUCKLE_STEP_DELAY = 100;
 const SIMULATION_PROMPT = "a sun rising over a garden";
 const DEFAULT_STATUS_MESSAGE = 'Press "Save" when you are done, or Reset to start over';
 const SAVED_TRANSITION_MESSAGE =
-  'Thank you, your behaviour has been saved. To proceed to the next step please click next or to change your current description press cancel';
+  "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour.";
 
 type Cell = {
   row: number;

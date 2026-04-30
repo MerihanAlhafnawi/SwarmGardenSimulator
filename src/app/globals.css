@@ -466,15 +466,21 @@ button:disabled {
 }
 
 .video-placeholder {
-  min-height: 360px;
   border-radius: 24px;
-  border: 1px dashed rgba(116, 83, 54, 0.3);
+  border: 1px solid rgba(116, 83, 54, 0.14);
   background: rgba(255, 255, 255, 0.42);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
-  font-size: 1.05rem;
+  overflow: hidden;
+}
+
+.intro-video {
+  width: 100%;
+  min-height: 360px;
+  display: block;
+  background: #000;
+  border-radius: 24px;
 }
 
 .intro-actions {
@@ -547,6 +553,10 @@ button:disabled {
   }
 
   .video-placeholder {
+    min-height: 220px;
+  }
+
+  .intro-video {
     min-height: 220px;
   }
 

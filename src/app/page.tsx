@@ -12,7 +12,10 @@ export default function HomePage() {
         </div>
 
         <div className="video-placeholder">
-          <span>Instructional video placeholder</span>
+          <video className="intro-video" controls playsInline preload="metadata">
+            <source src="/intro_video.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
         </div>
 
         <div className="intro-actions">
