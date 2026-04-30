@@ -5,7 +5,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, FirestoreError, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
-import { getStoredParticipantNumber, saveStudyStep, storeParticipantNumber } from "@/lib/study";
+import {
+  buildStudyHref,
+  getParticipantIdentifier,
+  getStoredStudyContext,
+  hasRequiredStudyContext,
+  initializeStudyContextFromSearch,
+  saveStudyStep,
+  storeStudyContext,
+  type StudyContext,
+} from "@/lib/study";
 
 const ROWS = 3;
 const COLS = 12;
@@ -157,7 +166,7 @@ export default function SwarmApplication({
 }) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
-  const [participantNumber, setParticipantNumber] = useState("");
+  const [studyContext, setStudyContext] = useState<StudyContext>(getStoredStudyContext);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
   const [buckleValue, setBuckleValue] = useState(DEFAULT_LEVEL);
@@ -185,7 +194,7 @@ export default function SwarmApplication({
   }, [isFirebaseReady]);
 
   useEffect(() => {
-    setParticipantNumber(getStoredParticipantNumber());
+    setStudyContext(initializeStudyContextFromSearch(window.location.search));
   }, []);
 
   useEffect(() => {
@@ -269,13 +278,13 @@ export default function SwarmApplication({
 
   const skipTour = () => {
     closeTour();
-    router.push("/describe");
+    router.push(buildStudyHref("/describe", studyContext));
   };
 
   const nextTourStep = () => {
     if (tourStepIndex === TOUR_STEPS.length - 1) {
       closeTour();
-      router.push("/describe");
+      router.push(buildStudyHref("/describe", studyContext));
       return;
     }
 
@@ -506,10 +515,9 @@ export default function SwarmApplication({
       return false;
     }
 
-    const trimmedParticipantNumber = participantNumber.trim();
-    if (!trimmedParticipantNumber) {
-      window.alert("Please enter your participant number before saving.");
-      setSaveState("Add your participant number before saving");
+    if (!hasRequiredStudyContext(studyContext)) {
+      window.alert("Please enter a participant ID before saving.");
+      setSaveState("Add a participant ID before saving");
       return false;
     }
 
@@ -527,12 +535,17 @@ export default function SwarmApplication({
     }
 
     try {
-      storeParticipantNumber(trimmedParticipantNumber);
+      const participantId = getParticipantIdentifier(studyContext);
       const payload = {
         title: description,
         notes: description,
         events: recordData,
-        participantNumber: trimmedParticipantNumber,
+        participantNumber: participantId,
+        source: studyContext.source,
+        prolificPid: studyContext.prolificPid,
+        studyId: studyContext.studyId,
+        sessionId: studyContext.sessionId,
+        manualParticipantId: studyContext.manualParticipantId,
         step: mode === "prompt" ? "simulation" : "design-behaviour",
         data: {
           description,
@@ -544,7 +557,7 @@ export default function SwarmApplication({
 
       const docRef = await addDoc(collection(db, "recordings"), payload);
       await saveStudyStep({
-        participantNumber: trimmedParticipantNumber,
+        studyContext,
         step: mode === "prompt" ? "simulation" : "design-behaviour",
         data: {
           description,
@@ -702,7 +715,7 @@ export default function SwarmApplication({
 
   const proceedFromSavedTransition = () => {
     setTransitionMessage("");
-    router.push("/simulation");
+    router.push(buildStudyHref("/simulation", studyContext));
   };
 
   const cancelSavedTransition = () => {
@@ -729,17 +742,26 @@ export default function SwarmApplication({
 
       <section className="controls-card">
         <div className="toolbar">
-          <label className="field participant-field">
-            <span>Participant number</span>
-            <input
-              value={participantNumber}
-              onChange={(event) => {
-                setParticipantNumber(event.target.value);
-                storeParticipantNumber(event.target.value);
-              }}
-              placeholder="Type here"
-            />
-          </label>
+          {studyContext.source === "prolific" ? (
+            <div className="study-source-badge">Prolific participant ID connected</div>
+          ) : (
+            <label className="field participant-field">
+              <span>Participant ID</span>
+              <input
+                value={studyContext.manualParticipantId}
+                onChange={(event) => {
+                  const nextContext: StudyContext = {
+                    ...studyContext,
+                    source: "manual",
+                    manualParticipantId: event.target.value,
+                  };
+                  setStudyContext(nextContext);
+                  storeStudyContext(nextContext);
+                }}
+                placeholder="Type here"
+              />
+            </label>
+          )}
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
               <span>Please implement a behaviour that fits this description</span>

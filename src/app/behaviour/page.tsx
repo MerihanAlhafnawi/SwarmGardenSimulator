@@ -3,7 +3,15 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { getStoredParticipantNumber, saveStudyStep, storeParticipantNumber } from "@/lib/study";
+import {
+  buildStudyHref,
+  getStoredStudyContext,
+  hasRequiredStudyContext,
+  initializeStudyContextFromSearch,
+  saveStudyStep,
+  storeStudyContext,
+  type StudyContext,
+} from "@/lib/study";
 
 const ROWS = 3;
 const COLS = 12;
@@ -53,13 +61,13 @@ const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...
 export default function BehaviourPage() {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
-  const [participantNumber, setParticipantNumber] = useState("");
+  const [studyContext, setStudyContext] = useState<StudyContext>(getStoredStudyContext);
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
   const timersRef = useRef<number[]>([]);
 
   useEffect(() => {
-    setParticipantNumber(getStoredParticipantNumber());
+    setStudyContext(initializeStudyContextFromSearch(window.location.search));
   }, []);
 
   const stopDemo = () => {
@@ -129,21 +137,19 @@ export default function BehaviourPage() {
   }, []);
 
   const handleNext = async () => {
-    const trimmedParticipantNumber = participantNumber.trim();
     if (!description.trim()) {
       setMessage("Please type a description of this behaviour in your own words");
       return;
     }
 
-    if (!trimmedParticipantNumber) {
-      setMessage("Please enter your participant number");
+    if (!hasRequiredStudyContext(studyContext)) {
+      setMessage("Please enter a participant ID to continue");
       return;
     }
 
     try {
-      storeParticipantNumber(trimmedParticipantNumber);
       await saveStudyStep({
-        participantNumber: trimmedParticipantNumber,
+        studyContext,
         step: "describe-behaviour",
         data: {
           description: description.trim(),
@@ -151,7 +157,7 @@ export default function BehaviourPage() {
         },
       });
       setMessage("");
-      router.push("/implement");
+      router.push(buildStudyHref("/implement", studyContext));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Could not save your response";
       setMessage(errorMessage);
@@ -168,17 +174,26 @@ export default function BehaviourPage() {
       </section>
 
       <section className="controls-card behaviour-card">
-        <label className="field">
-          <span>Participant number</span>
-          <input
-            value={participantNumber}
-            onChange={(event) => {
-              setParticipantNumber(event.target.value);
-              storeParticipantNumber(event.target.value);
-            }}
-            placeholder="Type here"
-          />
-        </label>
+        {studyContext.source === "prolific" ? (
+          <p className="study-source-badge">Prolific participant ID connected</p>
+        ) : (
+          <label className="field participant-field">
+            <span>Participant ID</span>
+            <input
+              value={studyContext.manualParticipantId}
+              onChange={(event) => {
+                const nextContext: StudyContext = {
+                  ...studyContext,
+                  source: "manual",
+                  manualParticipantId: event.target.value,
+                };
+                setStudyContext(nextContext);
+                storeStudyContext(nextContext);
+              }}
+              placeholder="Type here"
+            />
+          </label>
+        )}
         <label className="field field-wide">
           <span>Describe the behaviour</span>
           <textarea
