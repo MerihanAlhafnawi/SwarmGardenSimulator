@@ -257,6 +257,12 @@ button:disabled {
   font-size: 1rem;
 }
 
+.participant-field {
+  min-width: 190px;
+  max-width: 240px;
+  flex: 0 0 220px;
+}
+
 .field-wide {
   flex: 1;
   min-width: 440px;

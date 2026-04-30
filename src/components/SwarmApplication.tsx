@@ -165,7 +165,6 @@ export default function SwarmApplication({
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
   const [saveState, setSaveState] = useState("Firebase not configured");
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
-  const [showPostSaveNext, setShowPostSaveNext] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
@@ -477,14 +476,11 @@ export default function SwarmApplication({
     });
   };
 
-  const resetSwarm = ({ keepNext = false }: { keepNext?: boolean } = {}) => {
+  const resetSwarm = () => {
     stopFlow();
     setSelected(new Set());
     setBuckleValue(DEFAULT_LEVEL);
     setRecordData([]);
-    if (!keepNext) {
-      setShowPostSaveNext(false);
-    }
     recordingStartRef.current = performance.now();
     setRecording(true);
     setRecordingStatus("Recording in progress");
@@ -561,11 +557,11 @@ export default function SwarmApplication({
         ...current,
       ]);
       setSaveState("Saved to Firestore for this session");
-      if (mode === "prompt") {
-        setShowPostSaveNext(true);
-      }
-      resetSwarm({ keepNext: mode === "prompt" });
+      resetSwarm();
       setRecordingStatus("Saved. Recording restarted.");
+      if (mode === "prompt") {
+        router.push("/simulation");
+      }
       return true;
     } catch (error) {
       console.error(error);
@@ -711,7 +707,7 @@ export default function SwarmApplication({
 
       <section className="controls-card">
         <div className="toolbar">
-          <label className="field">
+          <label className="field participant-field">
             <span>Participant number</span>
             <input
               value={participantNumber}
@@ -865,13 +861,6 @@ export default function SwarmApplication({
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
 
-        {mode === "prompt" && showPostSaveNext ? (
-          <div className="toolbar next-row">
-            <button className="next-step-button" onClick={() => router.push("/simulation")}>
-              Next
-            </button>
-          </div>
-        ) : null}
       </section>
 
       <section className={`grid-card ${getTourClass("grid")}`} data-tour-id="grid">
