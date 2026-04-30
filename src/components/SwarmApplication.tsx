@@ -855,7 +855,11 @@ export default function SwarmApplication({
           <button className="record" onClick={() => void saveRecording()}>
             Save
           </button>
-          <button className={`ghost ${getTourClass("reset-button")}`} data-tour-id="reset-button" onClick={resetSwarm}>
+          <button
+            className={`ghost ${getTourClass("reset-button")}`}
+            data-tour-id="reset-button"
+            onClick={() => resetSwarm()}
+          >
             Reset
           </button>
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
