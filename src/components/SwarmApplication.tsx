@@ -18,6 +18,7 @@ const START_OFFSET = 1000;
 const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
 const SIMULATION_PROMPT = "a sun rising over a garden";
+const DEFAULT_STATUS_MESSAGE = 'Press "Save" to save behaviour or reset to start over';
 
 type Cell = {
   row: number;
@@ -165,6 +166,7 @@ export default function SwarmApplication({
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
   const [saveState, setSaveState] = useState("Firebase not configured");
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
+  const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
@@ -185,7 +187,7 @@ export default function SwarmApplication({
 
   useEffect(() => {
     recordingStartRef.current = performance.now();
-    setRecordingStatus("Recording in progress");
+    setRecordingStatus(DEFAULT_STATUS_MESSAGE);
   }, []);
 
   useEffect(() => {
@@ -235,7 +237,7 @@ export default function SwarmApplication({
     }
 
     if (activeTourStep.targetId === "record-controls") {
-      setRecordingStatus("Recording in progress");
+      setRecordingStatus(DEFAULT_STATUS_MESSAGE);
       return;
     }
 
@@ -245,7 +247,7 @@ export default function SwarmApplication({
     }
 
     if (activeTourStep.targetId === "recorded-behaviours") {
-      setRecordingStatus("Recording in progress");
+      setRecordingStatus(DEFAULT_STATUS_MESSAGE);
       setSelected(new Set());
     }
   }, [activeTourStep.targetId, tourOpen]);
@@ -257,7 +259,7 @@ export default function SwarmApplication({
 
   const closeTour = () => {
     window.localStorage.setItem("swarm-tour-dismissed", "true");
-    setRecordingStatus("Recording in progress");
+    setRecordingStatus(DEFAULT_STATUS_MESSAGE);
     setSelected(new Set());
     setTourOpen(false);
   };
@@ -483,7 +485,8 @@ export default function SwarmApplication({
     setRecordData([]);
     recordingStartRef.current = performance.now();
     setRecording(true);
-    setRecordingStatus("Recording in progress");
+    setPlayingRecordingId(null);
+    setRecordingStatus(DEFAULT_STATUS_MESSAGE);
     updateCells((draft) => {
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = 0; col < COLS; col += 1) {
@@ -558,9 +561,11 @@ export default function SwarmApplication({
       ]);
       setSaveState("Saved to Firestore for this session");
       resetSwarm();
-      setRecordingStatus("Saved. Recording restarted.");
+      setRecordingStatus("Thank you, your behaviour has been saved.");
       if (mode === "prompt") {
-        router.push("/simulation");
+        window.setTimeout(() => {
+          router.push("/simulation");
+        }, 1200);
       }
       return true;
     } catch (error) {
@@ -618,13 +623,19 @@ export default function SwarmApplication({
     }
   };
 
-  const playbackRecording = (events: RecordingEvent[]) => {
+  const playbackRecording = (recordingId: string, events: RecordingEvent[]) => {
     resetSwarm();
     stopFlow();
+    setPlayingRecordingId(recordingId);
     setRecordingStatus("Playing saved behaviour");
     events.forEach((entry) => {
       schedule(() => runPlaybackAction(entry), Math.round(entry.time * 1000));
     });
+    const lastEventTime = events.length > 0 ? Math.max(...events.map((entry) => entry.time)) : 0;
+    schedule(() => {
+      setPlayingRecordingId(null);
+      setRecordingStatus(DEFAULT_STATUS_MESSAGE);
+    }, Math.round(lastEventTime * 1000) + 600);
   };
 
   const downloadRecordingsJson = () => {
@@ -918,7 +929,9 @@ export default function SwarmApplication({
                   <div className="recording-actions">
                     <span>{recordingItem.events.length} events</span>
                     <div className="recording-buttons">
-                      <button onClick={() => playbackRecording(recordingItem.events)}>Play</button>
+                      <button onClick={() => playbackRecording(recordingItem.id, recordingItem.events)}>
+                        {playingRecordingId === recordingItem.id ? "Playing" : "Play"}
+                      </button>
                       <button
                         className="danger"
                         onClick={() => void deleteRecording(recordingItem.id)}
