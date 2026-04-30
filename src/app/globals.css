@@ -205,6 +205,14 @@ h2 {
   letter-spacing: -0.03em;
 }
 
+.transition-actions {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .controls-card,
 .grid-card,
 .library-card {

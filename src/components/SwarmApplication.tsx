@@ -19,6 +19,8 @@ const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
 const SIMULATION_PROMPT = "a sun rising over a garden";
 const DEFAULT_STATUS_MESSAGE = 'Press "Save" when you are done, or Reset to start over';
+const SAVED_TRANSITION_MESSAGE =
+  'Thank you, your behaviour has been saved. To proceed to the next step please click next or to change your current description press cancel';
 
 type Cell = {
   row: number;
@@ -564,11 +566,7 @@ export default function SwarmApplication({
       resetSwarm();
       setRecordingStatus("Thank you, your behaviour has been saved.");
       if (mode === "prompt") {
-        setTransitionMessage("Thank you, your behaviour has been saved.");
-        window.setTimeout(() => {
-          setTransitionMessage("");
-          router.push("/simulation");
-        }, 3000);
+        setTransitionMessage(SAVED_TRANSITION_MESSAGE);
       }
       return true;
     } catch (error) {
@@ -700,6 +698,16 @@ export default function SwarmApplication({
     } finally {
       setDeletingRecordingId(null);
     }
+  };
+
+  const proceedFromSavedTransition = () => {
+    setTransitionMessage("");
+    router.push("/simulation");
+  };
+
+  const cancelSavedTransition = () => {
+    setTransitionMessage("");
+    setRecordingStatus(DEFAULT_STATUS_MESSAGE);
   };
 
   return (
@@ -980,6 +988,12 @@ export default function SwarmApplication({
         <div className="transition-overlay" aria-live="polite">
           <div className="transition-card">
             <p>{transitionMessage}</p>
+            <div className="transition-actions">
+              <button onClick={proceedFromSavedTransition}>Next</button>
+              <button className="ghost" onClick={cancelSavedTransition}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
