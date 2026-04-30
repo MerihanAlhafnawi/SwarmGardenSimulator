@@ -7,5 +7,5 @@ export default async function ApplicationPage({
 }) {
   const params = await searchParams;
 
-  return <SwarmApplication forceTour={params.tour === "1"} />;
+  return <SwarmApplication forceTour={params.tour === "1"} mode="design" />;
 }

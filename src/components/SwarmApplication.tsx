@@ -145,7 +145,13 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
 const TOUR_SELECTION = ["1:4", "1:5", "1:6"];
 
-export default function SwarmApplication({ forceTour = false }: { forceTour?: boolean }) {
+export default function SwarmApplication({
+  forceTour = false,
+  mode = "design",
+}: {
+  forceTour?: boolean;
+  mode?: "design" | "prompt";
+}) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
   const [participantNumber, setParticipantNumber] = useState("");
@@ -155,9 +161,11 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
   const [recording, setRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [recordData, setRecordData] = useState<RecordingEvent[]>([]);
+  const [recordingNotes, setRecordingNotes] = useState("");
   const [savedRecordings, setSavedRecordings] = useState<SavedRecording[]>([]);
   const [saveState, setSaveState] = useState("Firebase not configured");
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
+  const [showPostSaveNext, setShowPostSaveNext] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
@@ -472,6 +480,13 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       return false;
     }
 
+    const description = mode === "prompt" ? SIMULATION_PROMPT : recordingNotes.trim();
+    if (mode === "design" && !description) {
+      window.alert("Please describe a behaviour before saving.");
+      setSaveState("Add a behaviour description before saving");
+      return false;
+    }
+
     const db = getFirebaseDb();
     if (!db) {
       setSaveState("Firebase env vars missing");
@@ -481,13 +496,13 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
     try {
       storeParticipantNumber(trimmedParticipantNumber);
       const payload = {
-        title: SIMULATION_PROMPT,
-        notes: SIMULATION_PROMPT,
+        title: description,
+        notes: description,
         events: recordData,
         participantNumber: trimmedParticipantNumber,
-        step: "simulation",
+        step: mode === "prompt" ? "simulation" : "design-behaviour",
         data: {
-          description: SIMULATION_PROMPT,
+          description,
           events: recordData,
         },
         createdAt: serverTimestamp(),
@@ -497,9 +512,9 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       const docRef = await addDoc(collection(db, "recordings"), payload);
       await saveStudyStep({
         participantNumber: trimmedParticipantNumber,
-        step: "simulation",
+        step: mode === "prompt" ? "simulation" : "design-behaviour",
         data: {
-          description: SIMULATION_PROMPT,
+          description,
           events: recordData,
         },
       });
@@ -507,14 +522,17 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       setSavedRecordings((current) => [
         {
           id: docRef.id,
-          title: SIMULATION_PROMPT,
-          notes: SIMULATION_PROMPT,
+          title: description,
+          notes: description,
           createdAtLabel: new Date().toLocaleString(),
           events: recordData,
         },
         ...current,
       ]);
       setSaveState("Saved to Firestore for this session");
+      if (mode === "prompt") {
+        setShowPostSaveNext(true);
+      }
       return true;
     } catch (error) {
       console.error(error);
@@ -531,6 +549,7 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
     stopFlow();
     setSelected(new Set());
     setBuckleValue(DEFAULT_LEVEL);
+    setShowPostSaveNext(false);
     updateCells((draft) => {
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = 0; col < COLS; col += 1) {
@@ -658,9 +677,11 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
       <section className="hero">
         <div className="application-hero">
           <h1>Swarm Garden Simulator</h1>
-          <button className="ghost" onClick={startTour}>
-            Show Tour
-          </button>
+          {mode === "design" ? (
+            <button className="ghost" onClick={startTour}>
+              Show Tour
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -677,10 +698,25 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
               placeholder="Type here"
             />
           </label>
-          <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
-            <span>Prompt</span>
-            <p className="prompt-text">{SIMULATION_PROMPT}</p>
-          </div>
+          {mode === "prompt" ? (
+            <div
+              className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`}
+              data-tour-id="prompt-panel"
+            >
+              <span>Prompt</span>
+              <p className="prompt-text">{SIMULATION_PROMPT}</p>
+            </div>
+          ) : (
+            <label className={`field field-wide ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
+              <span>Describe a behaviour</span>
+              <textarea
+                value={recordingNotes}
+                onChange={(event) => setRecordingNotes(event.target.value)}
+                placeholder="Type here"
+                rows={2}
+              />
+            </label>
+          )}
         </div>
 
         <div className={`toolbar ${getTourClass("color-controls")}`} data-tour-id="color-controls">
@@ -801,6 +837,7 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
 
               setRecording(true);
               setRecordData([]);
+              setShowPostSaveNext(false);
               recordingStartRef.current = performance.now();
               setRecordingStatus("Recording");
             }}
@@ -814,6 +851,14 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
             Reset
           </button>
         </div>
+
+        {mode === "prompt" && showPostSaveNext ? (
+          <div className="toolbar next-row">
+            <button className="next-step-button" onClick={() => router.push("/application")}>
+              Next
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <section className={`grid-card ${getTourClass("grid")}`} data-tour-id="grid">
@@ -843,49 +888,51 @@ export default function SwarmApplication({ forceTour = false }: { forceTour?: bo
         </div>
       </section>
 
-      <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
-        <div className="library-header">
-          <div>
-            <h2>Recorded behaviours</h2>
+      {mode === "design" ? (
+        <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
+          <div className="library-header">
+            <div>
+              <h2>Recorded behaviours</h2>
+            </div>
+            <div className="library-actions">
+              <button className="ghost" onClick={downloadRecordingsJson}>
+                Download JSON
+              </button>
+            </div>
           </div>
-          <div className="library-actions">
-            <button className="ghost" onClick={downloadRecordingsJson}>
-              Download JSON
-            </button>
-          </div>
-        </div>
 
-        <div className="recording-list">
-          {savedRecordings.length === 0 ? (
-            <p className="empty-state">
-              No recordings saved in this session yet. Save a sequence and it will appear here.
-            </p>
-          ) : (
-            savedRecordings.map((recordingItem) => (
-              <article key={recordingItem.id} className="recording-card">
-                <div className="recording-meta">
-                  <h3>{recordingItem.title}</h3>
-                  <p>{recordingItem.createdAtLabel}</p>
-                </div>
-                <p className="recording-notes">{recordingItem.notes || "No notes yet."}</p>
-                <div className="recording-actions">
-                  <span>{recordingItem.events.length} events</span>
-                  <div className="recording-buttons">
-                    <button onClick={() => playbackRecording(recordingItem.events)}>Play</button>
-                    <button
-                      className="danger"
-                      onClick={() => void deleteRecording(recordingItem.id)}
-                      disabled={deletingRecordingId === recordingItem.id}
-                    >
-                      {deletingRecordingId === recordingItem.id ? "Deleting..." : "Delete"}
-                    </button>
+          <div className="recording-list">
+            {savedRecordings.length === 0 ? (
+              <p className="empty-state">
+                No recordings saved in this session yet. Save a sequence and it will appear here.
+              </p>
+            ) : (
+              savedRecordings.map((recordingItem) => (
+                <article key={recordingItem.id} className="recording-card">
+                  <div className="recording-meta">
+                    <h3>{recordingItem.title}</h3>
+                    <p>{recordingItem.createdAtLabel}</p>
                   </div>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
+                  <p className="recording-notes">{recordingItem.notes || "No notes yet."}</p>
+                  <div className="recording-actions">
+                    <span>{recordingItem.events.length} events</span>
+                    <div className="recording-buttons">
+                      <button onClick={() => playbackRecording(recordingItem.events)}>Play</button>
+                      <button
+                        className="danger"
+                        onClick={() => void deleteRecording(recordingItem.id)}
+                        disabled={deletingRecordingId === recordingItem.id}
+                      >
+                        {deletingRecordingId === recordingItem.id ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {tourOpen ? (
         <>

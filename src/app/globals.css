@@ -266,14 +266,14 @@ button:disabled {
 }
 
 .prompt-text {
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(116, 83, 54, 0.18);
-  background: rgba(255, 255, 255, 0.7);
   color: var(--text);
-  min-height: 58px;
-  display: flex;
-  align-items: center;
+  margin: 0;
+  padding: 4px 0 0;
+  font-size: clamp(1.8rem, 2.8vw, 2.7rem);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  max-width: 16ch;
 }
 
 .color-picker,
@@ -355,6 +355,14 @@ button:disabled {
 .recording-notes,
 .empty-state {
   color: var(--muted);
+}
+
+.next-row {
+  justify-content: flex-end;
+}
+
+.next-step-button {
+  min-width: 140px;
 }
 
 .library-actions {

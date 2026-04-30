@@ -151,7 +151,7 @@ export default function BehaviourPage() {
         },
       });
       setMessage("");
-      router.push("/application");
+      router.push("/simulation");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Could not save your response";
       setMessage(errorMessage);
