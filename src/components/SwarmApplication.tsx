@@ -261,7 +261,7 @@ export default function SwarmApplication({
   const nextTourStep = () => {
     if (tourStepIndex === TOUR_STEPS.length - 1) {
       closeTour();
-      router.push("/behaviour");
+      router.push("/describe");
       return;
     }
 
@@ -676,7 +676,11 @@ export default function SwarmApplication({
     <main className="page-shell">
       <section className="hero">
         <div className="application-hero">
-          <h1>Swarm Garden Simulator</h1>
+          <h1>
+            {mode === "prompt"
+              ? "Please implement a behaviour that fits this description"
+              : "Please implement your own behaviour and describe it"}
+          </h1>
           {mode === "design" ? (
             <button className="ghost" onClick={startTour}>
               Show Tour
@@ -703,7 +707,7 @@ export default function SwarmApplication({
               className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`}
               data-tour-id="prompt-panel"
             >
-              <span>Prompt</span>
+              <span>Please implement a behaviour that fits this description</span>
               <p className="prompt-text">{SIMULATION_PROMPT}</p>
             </div>
           ) : (
@@ -854,7 +858,7 @@ export default function SwarmApplication({
 
         {mode === "prompt" && showPostSaveNext ? (
           <div className="toolbar next-row">
-            <button className="next-step-button" onClick={() => router.push("/application")}>
+            <button className="next-step-button" onClick={() => router.push("/simulation")}>
               Next
             </button>
           </div>
