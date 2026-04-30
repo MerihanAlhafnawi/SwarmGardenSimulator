@@ -18,7 +18,7 @@ const START_OFFSET = 1000;
 const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
 const SIMULATION_PROMPT = "a sun rising over a garden";
-const DEFAULT_STATUS_MESSAGE = 'Press "Save" to save behaviour or reset to start over';
+const DEFAULT_STATUS_MESSAGE = 'Press "Save" when you are done, or Reset to start over';
 
 type Cell = {
   row: number;
@@ -167,6 +167,7 @@ export default function SwarmApplication({
   const [saveState, setSaveState] = useState("Firebase not configured");
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
+  const [transitionMessage, setTransitionMessage] = useState("");
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
@@ -563,9 +564,11 @@ export default function SwarmApplication({
       resetSwarm();
       setRecordingStatus("Thank you, your behaviour has been saved.");
       if (mode === "prompt") {
+        setTransitionMessage("Thank you, your behaviour has been saved.");
         window.setTimeout(() => {
+          setTransitionMessage("");
           router.push("/simulation");
-        }, 1200);
+        }, 3000);
       }
       return true;
     } catch (error) {
@@ -761,6 +764,9 @@ export default function SwarmApplication({
               onChange={(event) => setCurrentColor(event.target.value)}
             />
           </label>
+          <button className="ghost" onClick={deselectAll}>
+            Deselect All
+          </button>
           <button
             onClick={() => {
               const selectedCells = [...selected];
@@ -801,9 +807,6 @@ export default function SwarmApplication({
             }}
           >
             Color Center → Out
-          </button>
-          <button className="ghost" onClick={deselectAll}>
-            Deselect All
           </button>
         </div>
 
@@ -971,6 +974,14 @@ export default function SwarmApplication({
             </div>
           </aside>
         </>
+      ) : null}
+
+      {transitionMessage ? (
+        <div className="transition-overlay" aria-live="polite">
+          <div className="transition-card">
+            <p>{transitionMessage}</p>
+          </div>
+        </div>
       ) : null}
     </main>
   );

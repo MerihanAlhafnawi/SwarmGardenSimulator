@@ -178,6 +178,33 @@ h2 {
   font-size: 1rem;
 }
 
+.transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  background: rgba(242, 238, 230, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.transition-card {
+  width: min(900px, calc(100vw - 48px));
+  padding: 40px 44px;
+  border-radius: 28px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 250, 242, 0.95);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.transition-card p {
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
 .controls-card,
 .grid-card,
 .library-card {
