@@ -70,8 +70,8 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     targetId: "record-controls",
-    title: "Save progress",
-    body: "Your actions are recorded automatically. Press Save progress whenever you want to store what you have made so far.",
+    title: "Save",
+    body: "Your actions are recorded automatically. Press Save to store what you have made so far, or Reset to clear unsaved progress.",
   },
   {
     targetId: "reset-button",
@@ -477,9 +477,30 @@ export default function SwarmApplication({
     });
   };
 
+  const resetSwarm = ({ keepNext = false }: { keepNext?: boolean } = {}) => {
+    stopFlow();
+    setSelected(new Set());
+    setBuckleValue(DEFAULT_LEVEL);
+    setRecordData([]);
+    if (!keepNext) {
+      setShowPostSaveNext(false);
+    }
+    recordingStartRef.current = performance.now();
+    setRecording(true);
+    setRecordingStatus("Recording in progress");
+    updateCells((draft) => {
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let col = 0; col < COLS; col += 1) {
+          draft[row][col].level = DEFAULT_LEVEL;
+          draft[row][col].color = "#ffffff";
+        }
+      }
+    });
+  };
+
   const saveRecording = async () => {
     if (!recordData.length) {
-      setSaveState("Make a change before saving progress");
+      setSaveState("Make a change before saving");
       return false;
     }
 
@@ -540,10 +561,11 @@ export default function SwarmApplication({
         ...current,
       ]);
       setSaveState("Saved to Firestore for this session");
-      setRecordingStatus("Progress saved. Recording continues.");
       if (mode === "prompt") {
         setShowPostSaveNext(true);
       }
+      resetSwarm({ keepNext: mode === "prompt" });
+      setRecordingStatus("Saved. Recording restarted.");
       return true;
     } catch (error) {
       console.error(error);
@@ -554,25 +576,6 @@ export default function SwarmApplication({
       setSaveState(`Save failed: ${message}`);
       return false;
     }
-  };
-
-  const resetSwarm = () => {
-    stopFlow();
-    setSelected(new Set());
-    setBuckleValue(DEFAULT_LEVEL);
-    setRecordData([]);
-    setShowPostSaveNext(false);
-    recordingStartRef.current = performance.now();
-    setRecording(true);
-    setRecordingStatus("Recording in progress");
-    updateCells((draft) => {
-      for (let row = 0; row < ROWS; row += 1) {
-        for (let col = 0; col < COLS; col += 1) {
-          draft[row][col].level = DEFAULT_LEVEL;
-          draft[row][col].color = "#ffffff";
-        }
-      }
-    });
   };
 
   const runPlaybackAction = (entry: RecordingEvent) => {
@@ -620,7 +623,9 @@ export default function SwarmApplication({
   };
 
   const playbackRecording = (events: RecordingEvent[]) => {
+    resetSwarm();
     stopFlow();
+    setRecordingStatus("Playing saved behaviour");
     events.forEach((entry) => {
       schedule(() => runPlaybackAction(entry), Math.round(entry.time * 1000));
     });
@@ -722,9 +727,9 @@ export default function SwarmApplication({
               <span>Please implement a behaviour that fits this description</span>
               <p className="prompt-text">{SIMULATION_PROMPT}</p>
               <p className="implement-note">
-                Save progress will create a behaviour. If you are unhappy with the behaviour and have not
-                saved it yet, press reset. If you saved a behaviour and want to delete it, scroll to saved
-                behaviours and delete it.
+                Pressing &quot;Save&quot; will create a behaviour in &quot;Saved behaviours&quot;. Pressing
+                &quot;Reset&quot; will reset progress and not save. If you are unhappy with a saved behaviour
+                and want to delete it, scroll to &quot;Saved Behaviours&quot; and press &quot;Delete&quot; it.
               </p>
             </div>
           ) : (
@@ -848,13 +853,12 @@ export default function SwarmApplication({
 
         <div className={`toolbar ${getTourClass("record-controls")}`} data-tour-id="record-controls">
           <button className="record" onClick={() => void saveRecording()}>
-            Save progress
+            Save
           </button>
-          {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
-          <div className="toolbar-spacer" />
           <button className={`ghost ${getTourClass("reset-button")}`} data-tour-id="reset-button" onClick={resetSwarm}>
             Reset
           </button>
+          {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
 
         {mode === "prompt" && showPostSaveNext ? (
@@ -908,7 +912,7 @@ export default function SwarmApplication({
           <div className="recording-list">
             {savedRecordings.length === 0 ? (
               <p className="empty-state">
-                No saved behaviours yet. Save your progress and it will appear here.
+                No saved behaviours yet. Save and it will appear here.
               </p>
             ) : (
               savedRecordings.map((recordingItem) => (
