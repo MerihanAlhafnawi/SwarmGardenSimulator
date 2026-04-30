@@ -70,17 +70,17 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     targetId: "record-controls",
-    title: "Record and save",
-    body: "Press Record to capture your actions, Stop Recording when you are done, then Save Recording to store the behaviour.",
+    title: "Save progress",
+    body: "Your actions are recorded automatically. Press Save progress whenever you want to store what you have made so far.",
   },
   {
     targetId: "reset-button",
     title: "Reset",
-    body: "Reset clears selections, restores white backgrounds, and returns every robot to buckle level 11.",
+    body: "Reset clears the work you have done so far, restores white backgrounds, and returns every robot to buckle level 11 without deleting saved behaviours.",
   },
   {
     targetId: "recorded-behaviours",
-    title: "Recorded behaviours",
+    title: "Saved behaviours",
     body: "Saved behaviours appear here. You can replay them, download them as JSON, or delete them later.",
   },
 ];
@@ -158,7 +158,7 @@ export default function SwarmApplication({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
   const [buckleValue, setBuckleValue] = useState(DEFAULT_LEVEL);
-  const [recording, setRecording] = useState(false);
+  const [recording, setRecording] = useState(true);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [recordData, setRecordData] = useState<RecordingEvent[]>([]);
   const [recordingNotes, setRecordingNotes] = useState("");
@@ -182,6 +182,11 @@ export default function SwarmApplication({
 
   useEffect(() => {
     setParticipantNumber(getStoredParticipantNumber());
+  }, []);
+
+  useEffect(() => {
+    recordingStartRef.current = performance.now();
+    setRecordingStatus("Recording in progress");
   }, []);
 
   useEffect(() => {
@@ -231,7 +236,7 @@ export default function SwarmApplication({
     }
 
     if (activeTourStep.targetId === "record-controls") {
-      setRecordingStatus("Recording");
+      setRecordingStatus("Recording in progress");
       return;
     }
 
@@ -241,7 +246,7 @@ export default function SwarmApplication({
     }
 
     if (activeTourStep.targetId === "recorded-behaviours") {
-      setRecordingStatus("");
+      setRecordingStatus("Recording in progress");
       setSelected(new Set());
     }
   }, [activeTourStep.targetId, tourOpen]);
@@ -253,9 +258,14 @@ export default function SwarmApplication({
 
   const closeTour = () => {
     window.localStorage.setItem("swarm-tour-dismissed", "true");
-    setRecordingStatus("");
+    setRecordingStatus("Recording in progress");
     setSelected(new Set());
     setTourOpen(false);
+  };
+
+  const skipTour = () => {
+    closeTour();
+    router.push("/describe");
   };
 
   const nextTourStep = () => {
@@ -469,7 +479,7 @@ export default function SwarmApplication({
 
   const saveRecording = async () => {
     if (!recordData.length) {
-      setSaveState("Record something before saving");
+      setSaveState("Make a change before saving progress");
       return false;
     }
 
@@ -530,6 +540,7 @@ export default function SwarmApplication({
         ...current,
       ]);
       setSaveState("Saved to Firestore for this session");
+      setRecordingStatus("Progress saved. Recording continues.");
       if (mode === "prompt") {
         setShowPostSaveNext(true);
       }
@@ -549,7 +560,11 @@ export default function SwarmApplication({
     stopFlow();
     setSelected(new Set());
     setBuckleValue(DEFAULT_LEVEL);
+    setRecordData([]);
     setShowPostSaveNext(false);
+    recordingStartRef.current = performance.now();
+    setRecording(true);
+    setRecordingStatus("Recording in progress");
     updateCells((draft) => {
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = 0; col < COLS; col += 1) {
@@ -703,12 +718,14 @@ export default function SwarmApplication({
             />
           </label>
           {mode === "prompt" ? (
-            <div
-              className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`}
-              data-tour-id="prompt-panel"
-            >
+            <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
               <span>Please implement a behaviour that fits this description</span>
               <p className="prompt-text">{SIMULATION_PROMPT}</p>
+              <p className="implement-note">
+                Save progress will create a behaviour. If you are unhappy with the behaviour and have not
+                saved it yet, press reset. If you saved a behaviour and want to delete it, scroll to saved
+                behaviours and delete it.
+              </p>
             </div>
           ) : (
             <label className={`field field-wide ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
@@ -830,25 +847,9 @@ export default function SwarmApplication({
         </div>
 
         <div className={`toolbar ${getTourClass("record-controls")}`} data-tour-id="record-controls">
-          <button
-            className={recording ? "stop" : "record"}
-            onClick={() => {
-              if (recording) {
-                setRecording(false);
-                setRecordingStatus("Don't forget to save");
-                return;
-              }
-
-              setRecording(true);
-              setRecordData([]);
-              setShowPostSaveNext(false);
-              recordingStartRef.current = performance.now();
-              setRecordingStatus("Recording");
-            }}
-          >
-            {recording ? "Stop Recording" : "Record"}
+          <button className="record" onClick={() => void saveRecording()}>
+            Save progress
           </button>
-          <button onClick={() => void saveRecording()}>Save Recording</button>
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
           <div className="toolbar-spacer" />
           <button className={`ghost ${getTourClass("reset-button")}`} data-tour-id="reset-button" onClick={resetSwarm}>
@@ -892,11 +893,10 @@ export default function SwarmApplication({
         </div>
       </section>
 
-      {mode === "design" ? (
-        <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
+      <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
           <div className="library-header">
             <div>
-              <h2>Recorded behaviours</h2>
+              <h2>Saved behaviours</h2>
             </div>
             <div className="library-actions">
               <button className="ghost" onClick={downloadRecordingsJson}>
@@ -908,7 +908,7 @@ export default function SwarmApplication({
           <div className="recording-list">
             {savedRecordings.length === 0 ? (
               <p className="empty-state">
-                No recordings saved in this session yet. Save a sequence and it will appear here.
+                No saved behaviours yet. Save your progress and it will appear here.
               </p>
             ) : (
               savedRecordings.map((recordingItem) => (
@@ -936,11 +936,10 @@ export default function SwarmApplication({
             )}
           </div>
         </section>
-      ) : null}
 
       {tourOpen ? (
         <>
-          <div className="tour-overlay" onClick={closeTour} />
+          <div className="tour-overlay" onClick={skipTour} />
           <aside className="tour-card" aria-live="polite">
             <p className="eyebrow">
               Guided Tour {tourStepIndex + 1}/{TOUR_STEPS.length}
@@ -948,7 +947,7 @@ export default function SwarmApplication({
             <h2>{activeTourStep.title}</h2>
             <p className="tour-body">{activeTourStep.body}</p>
             <div className="tour-actions">
-              <button className="ghost" onClick={closeTour}>
+              <button className="ghost" onClick={skipTour}>
                 Skip
               </button>
               <div className="tour-actions-right">

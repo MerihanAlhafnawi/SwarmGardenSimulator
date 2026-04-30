@@ -105,6 +105,13 @@ a {
   color: #8a2f21;
 }
 
+.implement-note {
+  margin: 4px 0 0;
+  max-width: 56rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .tutorial-hero {
   display: grid;
   gap: 28px;
