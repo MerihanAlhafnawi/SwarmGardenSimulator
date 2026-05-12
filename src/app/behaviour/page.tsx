@@ -157,7 +157,7 @@ export default function BehaviourPage() {
         },
       });
       setMessage("");
-      router.push(buildStudyHref("/implement", studyContext));
+      router.push(buildStudyHref("/prepare", studyContext));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Could not save your response";
       setMessage(errorMessage);

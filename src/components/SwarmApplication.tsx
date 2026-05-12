@@ -179,6 +179,7 @@ export default function SwarmApplication({
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
   const [transitionMessage, setTransitionMessage] = useState("");
+  const [showPromptNextButton, setShowPromptNextButton] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
@@ -495,6 +496,7 @@ export default function SwarmApplication({
     setSelected(new Set());
     setBuckleValue(DEFAULT_LEVEL);
     setRecordData([]);
+    setShowPromptNextButton(false);
     recordingStartRef.current = performance.now();
     setRecording(true);
     setPlayingRecordingId(null);
@@ -579,6 +581,7 @@ export default function SwarmApplication({
       resetSwarm();
       setRecordingStatus("Thank you, your behaviour has been saved.");
       if (mode === "prompt") {
+        setShowPromptNextButton(false);
         setTransitionMessage(SAVED_TRANSITION_MESSAGE);
       }
       return true;
@@ -720,6 +723,7 @@ export default function SwarmApplication({
 
   const cancelSavedTransition = () => {
     setTransitionMessage("");
+    setShowPromptNextButton(true);
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
   };
 
@@ -910,6 +914,14 @@ export default function SwarmApplication({
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
 
+        {mode === "prompt" && showPromptNextButton ? (
+          <div className="toolbar next-row">
+            <button className="intro-next" onClick={() => router.push(buildStudyHref("/simulation", studyContext))}>
+              Next
+            </button>
+          </div>
+        ) : null}
+
       </section>
 
       <section className={`grid-card ${getTourClass("grid")}`} data-tour-id="grid">
@@ -987,7 +999,7 @@ export default function SwarmApplication({
 
       {tourOpen ? (
         <>
-          <div className="tour-overlay" onClick={skipTour} />
+          <div className="tour-overlay" />
           <aside className="tour-card" aria-live="polite">
             <p className="eyebrow">
               Guided Tour {tourStepIndex + 1}/{TOUR_STEPS.length}
@@ -995,9 +1007,6 @@ export default function SwarmApplication({
             <h2>{activeTourStep.title}</h2>
             <p className="tour-body">{activeTourStep.body}</p>
             <div className="tour-actions">
-              <button className="ghost" onClick={skipTour}>
-                Skip
-              </button>
               <div className="tour-actions-right">
                 <button className="ghost" onClick={previousTourStep} disabled={tourStepIndex === 0}>
                   Back
