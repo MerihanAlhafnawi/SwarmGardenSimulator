@@ -683,3 +683,38 @@ button:disabled {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+
+.consent-copy h1 {
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+}
+
+.survey-card {
+  display: grid;
+  gap: 18px;
+}
+
+.survey-question {
+  display: grid;
+  gap: 10px;
+}
+
+.survey-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.survey-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(116, 83, 54, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.survey-success {
+  color: #1c6b3b;
+}

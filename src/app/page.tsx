@@ -27,7 +27,7 @@ export default async function HomePage({
       <section className="hero consent-hero">
         <div className="consent-copy">
           <p className="eyebrow">PRINCETON UNIVERSITY</p>
-          <h1>ADULT CONSENT POSTER</h1>
+          <h1>Consent form</h1>
         </div>
 
         <div className="consent-card">

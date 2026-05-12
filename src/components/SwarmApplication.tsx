@@ -902,6 +902,11 @@ export default function SwarmApplication({
           >
             Reset
           </button>
+          {mode === "design" ? (
+            <button className="ghost" onClick={() => router.push(buildStudyHref("/survey", studyContext))}>
+              Finish Study
+            </button>
+          ) : null}
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
 
