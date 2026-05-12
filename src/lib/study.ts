@@ -1,4 +1,4 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 
 export const STUDY_CONTEXT_STORAGE_KEY = "swarm-study-context";
@@ -116,30 +116,197 @@ export function buildStudyHref(pathname: string, context: Partial<StudyContext>,
   return query ? `${pathname}?${query}` : pathname;
 }
 
-export async function saveStudyStep({
-  studyContext,
-  step,
-  data,
-}: {
-  studyContext: StudyContext;
-  step: string;
-  data: Record<string, unknown>;
-}) {
+type StudyStepKey = "describe-behaviour" | "simulation" | "design-behaviour" | "post-study-survey";
+
+type StudyRecord = {
+  participantNumber: string;
+  source: StudyContext["source"];
+  prolificPid: string;
+  studyId: string;
+  sessionId: string;
+  manualParticipantId: string;
+  steps?: {
+    describeBehaviour?: {
+      step: "describe-behaviour";
+      submittedAt: string;
+      data: Record<string, unknown>;
+    };
+    implementedBehaviours?: Array<{
+      id: string;
+      step: "simulation";
+      submittedAt: string;
+      data: Record<string, unknown>;
+    }>;
+    designedBehaviours?: Array<{
+      id: string;
+      step: "design-behaviour";
+      submittedAt: string;
+      data: Record<string, unknown>;
+    }>;
+    postStudySurvey?: {
+      step: "post-study-survey";
+      submittedAt: string;
+      data: Record<string, unknown>;
+    };
+  };
+  createdAt?: unknown;
+  updatedAt?: unknown;
+};
+
+function getStudyRecordId(studyContext: StudyContext) {
+  if (studyContext.prolificPid) {
+    return `prolific-${studyContext.prolificPid}-${studyContext.sessionId || studyContext.studyId || "session"}`;
+  }
+
+  if (studyContext.manualParticipantId) {
+    return `manual-${studyContext.manualParticipantId}`;
+  }
+
+  throw new Error("Participant identifier missing");
+}
+
+async function getExistingStudyRecord(studyContext: StudyContext) {
   const db = getFirebaseDb();
   if (!db) {
     throw new Error("Firebase env vars missing");
   }
 
-  return addDoc(collection(db, "recordings"), {
+  const ref = doc(db, "recordings", getStudyRecordId(studyContext));
+  const snapshot = await getDoc(ref);
+  const existing = snapshot.exists() ? (snapshot.data() as StudyRecord) : null;
+  return { db, ref, existing };
+}
+
+function getBaseStudyRecord(studyContext: StudyContext, existing?: StudyRecord | null): StudyRecord {
+  return {
     participantNumber: getParticipantIdentifier(studyContext),
     source: studyContext.source,
     prolificPid: studyContext.prolificPid,
     studyId: studyContext.studyId,
     sessionId: studyContext.sessionId,
     manualParticipantId: studyContext.manualParticipantId,
+    steps: existing?.steps ?? {},
+  };
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+export async function saveStudyStep({
+  studyContext,
+  step,
+  data,
+}: {
+  studyContext: StudyContext;
+  step: StudyStepKey;
+  data: Record<string, unknown>;
+}) {
+  const { ref, existing } = await getExistingStudyRecord(studyContext);
+  const record = getBaseStudyRecord(studyContext, existing);
+  const submittedAt = nowIso();
+
+  if (step === "describe-behaviour") {
+    record.steps!.describeBehaviour = { step, submittedAt, data };
+  }
+
+  if (step === "post-study-survey") {
+    record.steps!.postStudySurvey = { step, submittedAt, data };
+  }
+
+  await setDoc(
+    ref,
+    {
+      ...record,
+      createdAt: existing?.createdAt ?? serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: false },
+  );
+
+  return { id: ref.id };
+}
+
+export async function saveBehaviourRecording({
+  studyContext,
+  step,
+  description,
+  events,
+}: {
+  studyContext: StudyContext;
+  step: "simulation" | "design-behaviour";
+  description: string;
+  events: Record<string, unknown>[];
+}) {
+  const { ref, existing } = await getExistingStudyRecord(studyContext);
+  const record = getBaseStudyRecord(studyContext, existing);
+  const submittedAt = nowIso();
+  const behaviourId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${step}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const entry = {
+    id: behaviourId,
     step,
-    data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+    submittedAt,
+    data: {
+      description,
+      events,
+    },
+  };
+
+  if (step === "simulation") {
+    record.steps!.implementedBehaviours = [...(record.steps!.implementedBehaviours ?? []), entry];
+  } else {
+    record.steps!.designedBehaviours = [...(record.steps!.designedBehaviours ?? []), entry];
+  }
+
+  await setDoc(
+    ref,
+    {
+      ...record,
+      createdAt: existing?.createdAt ?? serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: false },
+  );
+
+  return entry;
+}
+
+export async function deleteBehaviourRecording({
+  studyContext,
+  step,
+  behaviourId,
+}: {
+  studyContext: StudyContext;
+  step: "simulation" | "design-behaviour";
+  behaviourId: string;
+}) {
+  const { ref, existing } = await getExistingStudyRecord(studyContext);
+  if (!existing) {
+    return;
+  }
+
+  const record = getBaseStudyRecord(studyContext, existing);
+  if (step === "simulation") {
+    record.steps!.implementedBehaviours = (record.steps!.implementedBehaviours ?? []).filter(
+      (entry) => entry.id !== behaviourId,
+    );
+  } else {
+    record.steps!.designedBehaviours = (record.steps!.designedBehaviours ?? []).filter(
+      (entry) => entry.id !== behaviourId,
+    );
+  }
+
+  await setDoc(
+    ref,
+    {
+      ...record,
+      createdAt: existing.createdAt ?? serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: false },
+  );
 }

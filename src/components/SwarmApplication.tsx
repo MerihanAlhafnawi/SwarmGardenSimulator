@@ -3,15 +3,15 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, FirestoreError, serverTimestamp } from "firebase/firestore";
+import { FirestoreError } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import {
   buildStudyHref,
-  getParticipantIdentifier,
+  deleteBehaviourRecording,
   getStoredStudyContext,
   hasRequiredStudyContext,
   initializeStudyContextFromSearch,
-  saveStudyStep,
+  saveBehaviourRecording,
   storeStudyContext,
   type StudyContext,
 } from "@/lib/study";
@@ -530,49 +530,20 @@ export default function SwarmApplication({
       return false;
     }
 
-    const db = getFirebaseDb();
-    if (!db) {
-      setSaveState("Firebase env vars missing");
-      return false;
-    }
-
     try {
-      const participantId = getParticipantIdentifier(studyContext);
-      const payload = {
-        title: description,
-        notes: description,
-        events: recordData,
-        participantNumber: participantId,
-        source: studyContext.source,
-        prolificPid: studyContext.prolificPid,
-        studyId: studyContext.studyId,
-        sessionId: studyContext.sessionId,
-        manualParticipantId: studyContext.manualParticipantId,
-        step: mode === "prompt" ? "simulation" : "design-behaviour",
-        data: {
-          description,
-          events: recordData,
-        },
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      const docRef = await addDoc(collection(db, "recordings"), payload);
-      await saveStudyStep({
+      const savedEntry = await saveBehaviourRecording({
         studyContext,
         step: mode === "prompt" ? "simulation" : "design-behaviour",
-        data: {
-          description,
-          events: recordData,
-        },
+        description,
+        events: recordData as Record<string, unknown>[],
       });
 
       setSavedRecordings((current) => [
         {
-          id: docRef.id,
+          id: savedEntry.id,
           title: description,
           notes: description,
-          createdAtLabel: new Date().toLocaleString(),
+          createdAtLabel: new Date(savedEntry.submittedAt).toLocaleString(),
           events: recordData,
         },
         ...current,
@@ -692,16 +663,14 @@ export default function SwarmApplication({
       return;
     }
 
-    const db = getFirebaseDb();
-    if (!db) {
-      setSaveState("Firebase env vars missing");
-      return;
-    }
-
     setDeletingRecordingId(recordingId);
 
     try {
-      await deleteDoc(doc(db, "recordings", recordingId));
+      await deleteBehaviourRecording({
+        studyContext,
+        step: mode === "prompt" ? "simulation" : "design-behaviour",
+        behaviourId: recordingId,
+      });
       setSavedRecordings((current) => current.filter((recording) => recording.id !== recordingId));
       setSaveState("Recording deleted permanently");
     } catch (error) {
