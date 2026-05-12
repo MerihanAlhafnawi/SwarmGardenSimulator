@@ -885,7 +885,16 @@ export default function SwarmApplication({
             Reset
           </button>
           {mode === "design" ? (
-            <button className="ghost" onClick={() => router.push(buildStudyHref("/survey", studyContext))}>
+            <button
+              className="ghost"
+              onClick={() => {
+                if (savedRecordings.length === 0) {
+                  setRecordingStatus("Please implement a behaviour first.");
+                  return;
+                }
+                router.push(buildStudyHref("/survey", studyContext));
+              }}
+            >
               Finish Study
             </button>
           ) : null}

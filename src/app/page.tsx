@@ -74,8 +74,6 @@ export default async function HomePage({
             <li>I hereby give my consent to be the subject of the research.</li>
           </ul>
 
-          <p>___________________                                                   ___________________</p>
-          <p>                                       Subject’s Signature                                         Date</p>
         </div>
 
         <div className="consent-actions">
