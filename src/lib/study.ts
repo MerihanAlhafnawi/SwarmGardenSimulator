@@ -9,6 +9,7 @@ export type StudyContext = {
   studyId: string;
   sessionId: string;
   manualParticipantId: string;
+  manualSessionStamp: string;
 };
 
 const EMPTY_STUDY_CONTEXT: StudyContext = {
@@ -17,6 +18,7 @@ const EMPTY_STUDY_CONTEXT: StudyContext = {
   studyId: "",
   sessionId: "",
   manualParticipantId: "",
+  manualSessionStamp: "",
 };
 
 export function getStoredStudyContext(): StudyContext {
@@ -40,10 +42,17 @@ export function getStoredStudyContext(): StudyContext {
       studyId: parsed.studyId ?? "",
       sessionId: parsed.sessionId ?? "",
       manualParticipantId: parsed.manualParticipantId ?? "",
+      manualSessionStamp: parsed.manualSessionStamp ?? "",
     };
   } catch {
     return EMPTY_STUDY_CONTEXT;
   }
+}
+
+function createManualSessionStamp() {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
 export function storeStudyContext(value: Partial<StudyContext>) {
@@ -58,7 +67,13 @@ export function storeStudyContext(value: Partial<StudyContext>) {
     studyId: value.studyId ?? current.studyId,
     sessionId: value.sessionId ?? current.sessionId,
     manualParticipantId: value.manualParticipantId ?? current.manualParticipantId,
+    manualSessionStamp: value.manualSessionStamp ?? current.manualSessionStamp,
   };
+
+  if (next.source === "manual" && next.manualParticipantId && !next.manualSessionStamp) {
+    next.manualSessionStamp = createManualSessionStamp();
+  }
+
   window.localStorage.setItem(STUDY_CONTEXT_STORAGE_KEY, JSON.stringify(next));
 }
 
@@ -68,12 +83,14 @@ export function getStudyContextFromSearch(search: string): Partial<StudyContext>
   const studyId = params.get("STUDY_ID") ?? "";
   const sessionId = params.get("SESSION_ID") ?? "";
   const manualParticipantId = params.get("PARTICIPANT_ID") ?? "";
+  const manualSessionStamp = params.get("MANUAL_SESSION_STAMP") ?? "";
   return {
     source: prolificPid ? "prolific" : manualParticipantId ? "manual" : undefined,
     prolificPid,
     studyId,
     sessionId,
     manualParticipantId,
+    manualSessionStamp,
   };
 }
 
@@ -107,6 +124,9 @@ export function buildStudyHref(pathname: string, context: Partial<StudyContext>,
   if (context.source === "manual" && context.manualParticipantId) {
     params.set("PARTICIPANT_ID", context.manualParticipantId);
   }
+  if (context.source === "manual" && context.manualSessionStamp) {
+    params.set("MANUAL_SESSION_STAMP", context.manualSessionStamp);
+  }
   if (extra) {
     for (const [key, value] of Object.entries(extra)) {
       params.set(key, value);
@@ -125,6 +145,7 @@ type StudyRecord = {
   studyId: string;
   sessionId: string;
   manualParticipantId: string;
+  manualSessionStamp: string;
   steps?: {
     describeBehaviour?: {
       step: "describe-behaviour";
@@ -159,7 +180,7 @@ function getStudyRecordId(studyContext: StudyContext) {
   }
 
   if (studyContext.manualParticipantId) {
-    const suffix = studyContext.sessionId || studyContext.studyId || "timestamp";
+    const suffix = studyContext.manualSessionStamp || studyContext.sessionId || studyContext.studyId || createManualSessionStamp();
     return `manual-${studyContext.manualParticipantId}-${suffix}`;
   }
 
@@ -186,6 +207,7 @@ function getBaseStudyRecord(studyContext: StudyContext, existing?: StudyRecord |
     studyId: studyContext.studyId,
     sessionId: studyContext.sessionId,
     manualParticipantId: studyContext.manualParticipantId,
+    manualSessionStamp: studyContext.manualSessionStamp,
     steps: existing?.steps ?? {},
   };
 }

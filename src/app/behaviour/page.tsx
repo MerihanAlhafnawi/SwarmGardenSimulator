@@ -186,6 +186,8 @@ export default function BehaviourPage() {
                   ...studyContext,
                   source: "manual",
                   manualParticipantId: event.target.value,
+                  manualSessionStamp:
+                    event.target.value === studyContext.manualParticipantId ? studyContext.manualSessionStamp : "",
                 };
                 setStudyContext(nextContext);
                 storeStudyContext(nextContext);

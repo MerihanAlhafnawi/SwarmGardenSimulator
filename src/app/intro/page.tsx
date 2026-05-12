@@ -15,6 +15,7 @@ export default async function IntroPage({
       studyId: typeof params.STUDY_ID === "string" ? params.STUDY_ID : "",
       sessionId: typeof params.SESSION_ID === "string" ? params.SESSION_ID : "",
       manualParticipantId: typeof params.PARTICIPANT_ID === "string" ? params.PARTICIPANT_ID : "",
+    manualSessionStamp: typeof params.MANUAL_SESSION_STAMP === "string" ? params.MANUAL_SESSION_STAMP : "",
       source:
         typeof params.PROLIFIC_PID === "string" && params.PROLIFIC_PID
           ? "prolific"
