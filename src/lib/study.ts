@@ -246,19 +246,27 @@ export async function saveBehaviourRecording({
       ? crypto.randomUUID()
       : `${step}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-  const entry = {
-    id: behaviourId,
-    step,
-    submittedAt,
-    data: {
-      description,
-      events,
-    },
-  };
-
   if (step === "simulation") {
+    const entry = {
+      id: behaviourId,
+      step: "simulation" as const,
+      submittedAt,
+      data: {
+        description,
+        events,
+      },
+    };
     record.steps!.implementedBehaviours = [...(record.steps!.implementedBehaviours ?? []), entry];
   } else {
+    const entry = {
+      id: behaviourId,
+      step: "design-behaviour" as const,
+      submittedAt,
+      data: {
+        description,
+        events,
+      },
+    };
     record.steps!.designedBehaviours = [...(record.steps!.designedBehaviours ?? []), entry];
   }
 
