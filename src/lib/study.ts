@@ -246,6 +246,8 @@ export async function saveBehaviourRecording({
       ? crypto.randomUUID()
       : `${step}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+  let savedEntry;
+
   if (step === "simulation") {
     const entry = {
       id: behaviourId,
@@ -257,6 +259,7 @@ export async function saveBehaviourRecording({
       },
     };
     record.steps!.implementedBehaviours = [...(record.steps!.implementedBehaviours ?? []), entry];
+    savedEntry = entry;
   } else {
     const entry = {
       id: behaviourId,
@@ -268,6 +271,7 @@ export async function saveBehaviourRecording({
       },
     };
     record.steps!.designedBehaviours = [...(record.steps!.designedBehaviours ?? []), entry];
+    savedEntry = entry;
   }
 
   await setDoc(
@@ -280,7 +284,7 @@ export async function saveBehaviourRecording({
     { merge: false },
   );
 
-  return entry;
+  return savedEntry;
 }
 
 export async function deleteBehaviourRecording({
