@@ -79,7 +79,7 @@ export function getStudyContextFromSearch(search: string): Partial<StudyContext>
 
 export function initializeStudyContextFromSearch(search: string): StudyContext {
   const fromSearch = getStudyContextFromSearch(search);
-  if (fromSearch.prolificPid || fromSearch.studyId || fromSearch.sessionId) {
+  if (fromSearch.prolificPid || fromSearch.studyId || fromSearch.sessionId || fromSearch.manualParticipantId) {
     storeStudyContext(fromSearch);
   }
   return getStoredStudyContext();
