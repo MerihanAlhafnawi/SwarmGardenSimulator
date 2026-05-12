@@ -159,7 +159,8 @@ function getStudyRecordId(studyContext: StudyContext) {
   }
 
   if (studyContext.manualParticipantId) {
-    return `manual-${studyContext.manualParticipantId}`;
+    const suffix = studyContext.sessionId || studyContext.studyId || "timestamp";
+    return `manual-${studyContext.manualParticipantId}-${suffix}`;
   }
 
   throw new Error("Participant identifier missing");
