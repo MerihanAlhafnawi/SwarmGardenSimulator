@@ -727,6 +727,15 @@ export default function SwarmApplication({
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
   };
 
+  const handlePromptNext = () => {
+    if (savedRecordings.length === 0) {
+      setRecordingStatus("Please implement a behaviour first.");
+      return;
+    }
+
+    router.push(buildStudyHref("/simulation", studyContext));
+  };
+
   return (
     <main className="page-shell">
       <section className="hero">
@@ -916,7 +925,7 @@ export default function SwarmApplication({
 
         {mode === "prompt" && showPromptNextButton ? (
           <div className="toolbar next-row">
-            <button className="intro-next" onClick={() => router.push(buildStudyHref("/simulation", studyContext))}>
+            <button className="intro-next" onClick={handlePromptNext}>
               Next
             </button>
           </div>
