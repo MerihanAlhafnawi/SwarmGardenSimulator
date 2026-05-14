@@ -27,7 +27,6 @@ const START_OFFSET = 1000;
 const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
 const REPLAY_STEP_DELAY = 2000;
-const SIMULATION_PROMPT = "a sun rising over a garden";
 const DEFAULT_STATUS_MESSAGE = 'Press "Save" when you are done, or Reset to start over';
 const SAVED_TRANSITION_MESSAGE =
   "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour (which you can find under Saved behaviours).";
@@ -184,9 +183,13 @@ const getPlaybackStepLabel = (action: string) => {
 export default function SwarmApplication({
   forceTour = false,
   mode = "design",
+  promptText = "a sun rising over a garden",
+  promptNextHref = "/simulation-prepare",
 }: {
   forceTour?: boolean;
   mode?: "design" | "prompt";
+  promptText?: string;
+  promptNextHref?: string;
 }) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
@@ -549,7 +552,7 @@ export default function SwarmApplication({
       return false;
     }
 
-    const description = mode === "prompt" ? SIMULATION_PROMPT : recordingNotes.trim();
+    const description = mode === "prompt" ? promptText : recordingNotes.trim();
     if (mode === "design" && !description) {
       window.alert("Please describe a behaviour before saving.");
       setSaveState("Add a behaviour description before saving");
@@ -717,7 +720,7 @@ export default function SwarmApplication({
 
   const proceedFromSavedTransition = () => {
     setTransitionMessage("");
-    router.push(buildStudyHref("/simulation-prepare", studyContext));
+    router.push(buildStudyHref(promptNextHref, studyContext));
   };
 
   const cancelSavedTransition = () => {
@@ -732,7 +735,7 @@ export default function SwarmApplication({
       return;
     }
 
-    router.push(buildStudyHref("/simulation-prepare", studyContext));
+    router.push(buildStudyHref(promptNextHref, studyContext));
   };
 
   return (
@@ -777,7 +780,7 @@ export default function SwarmApplication({
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
               <span>Please implement a behaviour that fits this description</span>
-              <p className="prompt-text">{SIMULATION_PROMPT}</p>
+              <p className="prompt-text">{promptText}</p>
               <p className="implement-note">
                 Pressing &quot;Save&quot; will create a behaviour in &quot;Saved behaviours&quot;. Pressing
                 &quot;Reset&quot; will reset progress and not save. If you are unhappy with a saved behaviour

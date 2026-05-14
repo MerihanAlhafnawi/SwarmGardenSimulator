@@ -250,10 +250,12 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
       return;
     }
 
-    for (let col = 0; col < RAINBOW_COLORS.length; col += 1) {
-      const targetColor = RAINBOW_COLORS[col];
+    const centerOutColumns = [5, 6, 4, 7, 3, 8, 2, 9, 1, 10, 0, 11];
+    for (let index = 0; index < centerOutColumns.length; index += 1) {
+      const targetColor = RAINBOW_COLORS[index];
+      const col = centerOutColumns[index];
       for (let row = 0; row < ROWS; row += 1) {
-        schedule(() => fadeCell(row, col, targetColor), col * 220);
+        schedule(() => fadeCell(row, col, targetColor), index * 220);
       }
     }
 
