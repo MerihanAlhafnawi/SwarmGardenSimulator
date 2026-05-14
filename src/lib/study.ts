@@ -255,11 +255,13 @@ export async function saveBehaviourRecording({
   step,
   description,
   events,
+  promptSlot,
 }: {
   studyContext: StudyContext;
   step: "simulation" | "design-behaviour";
   description: string;
   events: Record<string, unknown>[];
+  promptSlot?: string;
 }) {
   const { ref, existing } = await getExistingStudyRecord(studyContext);
   const record = getBaseStudyRecord(studyContext, existing);
@@ -279,9 +281,13 @@ export async function saveBehaviourRecording({
       data: {
         description,
         events,
+        ...(promptSlot ? { promptSlot } : {}),
       },
     };
-    record.steps!.implementedBehaviours = [...(record.steps!.implementedBehaviours ?? []), entry];
+    const existingEntries = record.steps!.implementedBehaviours ?? [];
+    record.steps!.implementedBehaviours = promptSlot
+      ? [...existingEntries.filter((saved) => saved.data.promptSlot !== promptSlot), entry]
+      : [...existingEntries, entry];
     savedEntry = entry;
   } else {
     const entry = {

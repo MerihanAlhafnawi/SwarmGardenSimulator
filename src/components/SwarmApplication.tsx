@@ -29,7 +29,7 @@ const BUCKLE_STEP_DELAY = 100;
 const REPLAY_STEP_DELAY = 2000;
 const DEFAULT_STATUS_MESSAGE = 'Press "Save" when you are done, or Reset to start over';
 const SAVED_TRANSITION_MESSAGE =
-  "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour (which you can find under Saved behaviours).";
+  "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour.";
 
 type Cell = {
   row: number;
@@ -185,11 +185,13 @@ export default function SwarmApplication({
   mode = "design",
   promptText = "a sun rising over a garden",
   promptNextHref = "/simulation-prepare",
+  promptSlot,
 }: {
   forceTour?: boolean;
   mode?: "design" | "prompt";
   promptText?: string;
   promptNextHref?: string;
+  promptSlot?: string;
 }) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
@@ -565,18 +567,20 @@ export default function SwarmApplication({
         step: mode === "prompt" ? "simulation" : "design-behaviour",
         description,
         events: recordData as Record<string, unknown>[],
+        promptSlot,
       });
 
-      setSavedRecordings((current) => [
-        {
-          id: savedEntry.id,
-          title: description,
-          notes: description,
-          createdAtLabel: new Date(savedEntry.submittedAt).toLocaleString(),
-          events: recordData,
-        },
-        ...current,
-      ]);
+      const nextSavedRecording = {
+        id: savedEntry.id,
+        title: description,
+        notes: description,
+        createdAtLabel: new Date(savedEntry.submittedAt).toLocaleString(),
+        events: recordData,
+      };
+
+      setSavedRecordings((current) =>
+        mode === "prompt" ? [nextSavedRecording] : [nextSavedRecording, ...current],
+      );
       setSaveState("Saved to Firestore for this session");
       resetSwarm();
       setRecordingStatus("Thank you, your behaviour has been saved.");
@@ -971,6 +975,7 @@ export default function SwarmApplication({
         </div>
       </section>
 
+      {mode === "design" ? (
       <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
           <div className="library-header">
             <div>
@@ -1058,6 +1063,7 @@ export default function SwarmApplication({
             )}
           </div>
         </section>
+      ) : null}
 
       {tourOpen ? (
         <>
