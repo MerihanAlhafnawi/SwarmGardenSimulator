@@ -41,16 +41,37 @@ type StepConfig = {
   initialLevel: number;
   nextHref: string;
   isFinalStep?: boolean;
-  playDemo: (helpers: DemoHelpers) => void;
+  demoKind: "blue-left-to-right" | "yellow-orange-bloom" | "rainbow-random-bloom";
 };
 
-type DemoHelpers = {
-  resetGrid: () => void;
-  fadeCell: (row: number, col: number, targetColor: string) => void;
-  setCellLevel: (row: number, col: number, level: number) => void;
-  setAllLevels: (level: number) => void;
-  schedule: (callback: () => void, delay: number) => void;
-};
+const BLUE_COLOR = "#007fff";
+const WARM_COLORS = ["#fff1a8", "#ffe16e", "#ffd04a", "#ffbe2f", "#f5aa14", "#e58900"];
+const WARM_BAND_DELAY = 1000;
+const BLOOM_STEP_DELAY = 180;
+const RAINBOW_COLORS = [
+  "#ff4d4d",
+  "#ff8a1f",
+  "#ffd84d",
+  "#4dcf6f",
+  "#47b8ff",
+  "#7161ff",
+  "#d45bff",
+  "#ff6ec7",
+  "#ff4d4d",
+  "#ff8a1f",
+  "#ffd84d",
+  "#4dcf6f",
+];
+const RANDOM_BLOOM_SEQUENCE = [
+  { row: 0, col: 3, level: 4 },
+  { row: 2, col: 9, level: 8 },
+  { row: 1, col: 5, level: 2 },
+  { row: 0, col: 10, level: 11 },
+  { row: 2, col: 1, level: 6 },
+  { row: 1, col: 8, level: 3 },
+  { row: 0, col: 0, level: 9 },
+  { row: 2, col: 6, level: 5 },
+];
 
 const createGrid = (level: number): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
@@ -193,23 +214,65 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     });
   };
 
+  const playDemoByKind = () => {
+    resetGrid();
+
+    if (config.demoKind === "blue-left-to-right") {
+      let index = 0;
+      for (let col = 0; col < COLS; col += 1) {
+        for (let row = 0; row < ROWS; row += 1) {
+          schedule(() => fadeCell(row, col, BLUE_COLOR), index * 120);
+          index += 1;
+        }
+      }
+      return;
+    }
+
+    if (config.demoKind === "yellow-orange-bloom") {
+      const bandCount = Math.ceil(COLS / 2);
+
+      for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
+        const targetColor = WARM_COLORS[bandIndex % WARM_COLORS.length];
+        const startCol = bandIndex * 2;
+        const delay = bandIndex * WARM_BAND_DELAY;
+
+        for (let row = 0; row < ROWS; row += 1) {
+          for (let col = startCol; col < Math.min(startCol + 2, COLS); col += 1) {
+            schedule(() => fadeCell(row, col, targetColor), delay);
+          }
+        }
+      }
+
+      const bloomStartDelay = bandCount * WARM_BAND_DELAY;
+      for (let level = 1; level <= 11; level += 1) {
+        schedule(() => setAllLevels(level), bloomStartDelay + (level - 1) * BLOOM_STEP_DELAY);
+      }
+      return;
+    }
+
+    for (let col = 0; col < RAINBOW_COLORS.length; col += 1) {
+      const targetColor = RAINBOW_COLORS[col];
+      for (let row = 0; row < ROWS; row += 1) {
+        schedule(() => fadeCell(row, col, targetColor), col * 220);
+      }
+    }
+
+    RANDOM_BLOOM_SEQUENCE.forEach((entry, index) => {
+      schedule(() => setCellLevel(entry.row, entry.col, entry.level), 2200 + index * 350);
+    });
+  };
+
   useEffect(() => {
     const playLoop = () => {
       stopDemo(timersRef);
-      config.playDemo({
-        resetGrid,
-        fadeCell,
-        setCellLevel,
-        setAllLevels,
-        schedule,
-      });
+      playDemoByKind();
       schedule(playLoop, LOOP_DELAY + 12000);
     };
 
     playLoop();
 
     return () => stopDemo(timersRef);
-  }, [config]);
+  }, [config.demoKind, config.initialLevel]);
 
   const handleNext = async () => {
     if (!description.trim()) {

@@ -1,7 +1,5 @@
 import BehaviourDescriptionStep from "@/components/BehaviourDescriptionStep";
 
-const BLUE_COLOR = "#007fff";
-
 export default function BehaviourPage() {
   return (
     <BehaviourDescriptionStep
@@ -13,17 +11,7 @@ export default function BehaviourPage() {
         stimulus: "color left-to-right blue",
         initialLevel: 11,
         nextHref: "/describe-two",
-        playDemo: ({ resetGrid, fadeCell, schedule }) => {
-          resetGrid();
-          let index = 0;
-
-          for (let col = 0; col < 12; col += 1) {
-            for (let row = 0; row < 3; row += 1) {
-              schedule(() => fadeCell(row, col, BLUE_COLOR), index * 120);
-              index += 1;
-            }
-          }
-        },
+        demoKind: "blue-left-to-right",
       }}
     />
   );
