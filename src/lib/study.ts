@@ -166,6 +166,7 @@ type StudyRecord = {
   sessionId: string;
   manualParticipantId: string;
   manualSessionStamp: string;
+  studyRunId: string;
   steps?: {
     describeBehaviour?: {
       step: "describe-behaviour";
