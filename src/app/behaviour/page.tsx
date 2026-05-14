@@ -15,11 +15,11 @@ import {
 
 const ROWS = 3;
 const COLS = 12;
-const DEFAULT_LEVEL = 11;
-const DEMO_COLOR = "#007fff";
+const START_LEVEL = 1;
+const YELLOW_SHADES = ["#fff4b0", "#ffe680", "#ffd24d", "#ffbf1f", "#f2a900", "#d88f00"];
 const STEPS = 15;
 const STEP_DELAY = 50;
-const HOP_DELAY = 120;
+const SHADE_DELAY = 2000;
 const LOOP_DELAY = 2400;
 
 type Cell = {
@@ -35,7 +35,7 @@ const createGrid = (): Cell[][] =>
       row,
       col,
       color: "#ffffff",
-      level: DEFAULT_LEVEL,
+      level: START_LEVEL,
     })),
   );
 
@@ -95,7 +95,7 @@ export default function BehaviourPage() {
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = 0; col < COLS; col += 1) {
           draft[row][col].color = "#ffffff";
-          draft[row][col].level = DEFAULT_LEVEL;
+          draft[row][col].level = START_LEVEL;
         }
       }
     });
@@ -116,23 +116,40 @@ export default function BehaviourPage() {
     }
   };
 
-  const playBlueLeftToRight = () => {
+  const setAllLevels = (level: number) => {
+    updateCells((draft) => {
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let col = 0; col < COLS; col += 1) {
+          draft[row][col].level = level;
+        }
+      }
+    });
+  };
+
+  const playYellowBloomDemo = () => {
     stopDemo();
     resetGrid();
 
-    let index = 0;
-    for (let col = 0; col < COLS; col += 1) {
+    const bandCount = Math.ceil(COLS / 2);
+    for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
+      const shade = YELLOW_SHADES[bandIndex % YELLOW_SHADES.length];
+      const startCol = bandIndex * 2;
+      const delay = bandIndex * SHADE_DELAY;
+
       for (let row = 0; row < ROWS; row += 1) {
-        schedule(() => fadeCell(row, col, DEMO_COLOR), index * HOP_DELAY);
-        index += 1;
+        for (let col = startCol; col < Math.min(startCol + 2, COLS); col += 1) {
+          schedule(() => fadeCell(row, col, shade), delay);
+        }
       }
     }
 
-    schedule(playBlueLeftToRight, index * HOP_DELAY + LOOP_DELAY);
+    const bloomDelay = bandCount * SHADE_DELAY;
+    schedule(() => setAllLevels(11), bloomDelay);
+    schedule(playYellowBloomDemo, bloomDelay + LOOP_DELAY);
   };
 
   useEffect(() => {
-    playBlueLeftToRight();
+    playYellowBloomDemo();
     return () => stopDemo();
   }, []);
 
@@ -153,7 +170,7 @@ export default function BehaviourPage() {
         step: "describe-behaviour",
         data: {
           description: description.trim(),
-          stimulus: "color left-to-right blue",
+          stimulus: "flowers start at 1, change through yellow shades in two-column bands, then bloom to 11 together",
         },
       });
       setMessage("");
