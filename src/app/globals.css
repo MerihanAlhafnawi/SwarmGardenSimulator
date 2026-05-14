@@ -437,6 +437,68 @@ button:disabled {
   gap: 10px;
 }
 
+.playback-progress {
+  display: grid;
+  gap: 10px;
+}
+
+.playback-progress-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.playback-timeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.timeline-step {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 24px;
+}
+
+.timeline-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(116, 83, 54, 0.28);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.timeline-line {
+  height: 3px;
+  flex: 1 1 auto;
+  min-width: 28px;
+  background: rgba(116, 83, 54, 0.18);
+  border-radius: 999px;
+  transition: background 140ms ease;
+}
+
+.timeline-step.complete .timeline-dot,
+.timeline-step.current .timeline-dot {
+  border-color: #d14b2a;
+  background: #d14b2a;
+}
+
+.timeline-step.current .timeline-dot {
+  transform: scale(1.15);
+}
+
+.timeline-step.complete .timeline-line,
+.timeline-step.current .timeline-line {
+  background: rgba(209, 75, 42, 0.5);
+}
+
 .tour-overlay {
   position: fixed;
   inset: 0;

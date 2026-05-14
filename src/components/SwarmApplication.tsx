@@ -26,10 +26,11 @@ const HOP_DELAY = 120;
 const START_OFFSET = 1000;
 const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
+const REPLAY_STEP_DELAY = 2000;
 const SIMULATION_PROMPT = "a sun rising over a garden";
 const DEFAULT_STATUS_MESSAGE = 'Press "Save" when you are done, or Reset to start over';
 const SAVED_TRANSITION_MESSAGE =
-  "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour.";
+  "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour (which you can find under Saved behaviours).";
 
 type Cell = {
   row: number;
@@ -50,6 +51,11 @@ type SavedRecording = {
   notes: string;
   createdAtLabel: string;
   events: RecordingEvent[];
+};
+
+type PlaybackProgress = {
+  recordingId: string;
+  activeIndex: number;
 };
 
 type PlaybackCellsInput = Array<string | [number, number]>;
@@ -156,6 +162,24 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
 
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
 const TOUR_SELECTION = ["1:4", "1:5", "1:6"];
+const getPlaybackStepLabel = (action: string) => {
+  switch (action) {
+    case "color_selected":
+      return "Color selected";
+    case "color_all":
+      return "Color all";
+    case "color_flow":
+      return "Color flow";
+    case "buckle_selected":
+      return "Buckle selected";
+    case "buckle_all":
+      return "Buckle all";
+    case "buckle_flow":
+      return "Buckle flow";
+    default:
+      return "Action";
+  }
+};
 
 export default function SwarmApplication({
   forceTour = false,
@@ -178,6 +202,7 @@ export default function SwarmApplication({
   const [saveState, setSaveState] = useState("Firebase not configured");
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
+  const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress | null>(null);
   const [transitionMessage, setTransitionMessage] = useState("");
   const [showPromptNextButton, setShowPromptNextButton] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -500,6 +525,7 @@ export default function SwarmApplication({
     recordingStartRef.current = performance.now();
     setRecording(true);
     setPlayingRecordingId(null);
+    setPlaybackProgress(null);
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
     updateCells((draft) => {
       for (let row = 0; row < ROWS; row += 1) {
@@ -616,14 +642,18 @@ export default function SwarmApplication({
     stopFlow();
     setPlayingRecordingId(recordingId);
     setRecordingStatus("Playing saved behaviour");
-    events.forEach((entry) => {
-      schedule(() => runPlaybackAction(entry), Math.round(entry.time * 1000));
+    setPlaybackProgress({ recordingId, activeIndex: -1 });
+    events.forEach((entry, index) => {
+      schedule(() => {
+        setPlaybackProgress({ recordingId, activeIndex: index });
+        runPlaybackAction(entry);
+      }, index * REPLAY_STEP_DELAY);
     });
-    const lastEventTime = events.length > 0 ? Math.max(...events.map((entry) => entry.time)) : 0;
     schedule(() => {
       setPlayingRecordingId(null);
+      setPlaybackProgress(null);
       setRecordingStatus(DEFAULT_STATUS_MESSAGE);
-    }, Math.round(lastEventTime * 1000) + 600);
+    }, Math.max(events.length - 1, 0) * REPLAY_STEP_DELAY + 600);
   };
 
   const downloadRecordingsJson = () => {
@@ -687,7 +717,7 @@ export default function SwarmApplication({
 
   const proceedFromSavedTransition = () => {
     setTransitionMessage("");
-    router.push(buildStudyHref("/simulation", studyContext));
+    router.push(buildStudyHref("/simulation-prepare", studyContext));
   };
 
   const cancelSavedTransition = () => {
@@ -702,7 +732,7 @@ export default function SwarmApplication({
       return;
     }
 
-    router.push(buildStudyHref("/simulation", studyContext));
+    router.push(buildStudyHref("/simulation-prepare", studyContext));
   };
 
   return (
@@ -963,6 +993,48 @@ export default function SwarmApplication({
                     <p>{recordingItem.createdAtLabel}</p>
                   </div>
                   <p className="recording-notes">{recordingItem.notes || "No notes yet."}</p>
+                  {recordingItem.events.length > 0 ? (
+                    <div className="playback-progress">
+                      <div className="playback-progress-header">
+                        <span>Replay progress</span>
+                        <span>
+                          {playingRecordingId === recordingItem.id && playbackProgress
+                            ? playbackProgress.activeIndex >= 0
+                              ? `Step ${playbackProgress.activeIndex + 1} of ${recordingItem.events.length}`
+                              : "Starting replay"
+                            : `${recordingItem.events.length} steps`}
+                        </span>
+                      </div>
+                      <div className="playback-timeline" aria-label="Replay timeline">
+                        {recordingItem.events.map((event, index) => {
+                          const isCurrent =
+                            playingRecordingId === recordingItem.id &&
+                            playbackProgress?.recordingId === recordingItem.id &&
+                            playbackProgress.activeIndex === index;
+                          const isComplete =
+                            playingRecordingId === recordingItem.id &&
+                            playbackProgress?.recordingId === recordingItem.id &&
+                            playbackProgress.activeIndex > index;
+
+                          return (
+                            <div
+                              key={`${recordingItem.id}-${index}`}
+                              className={`timeline-step ${isCurrent ? "current" : ""} ${
+                                isComplete ? "complete" : ""
+                              }`}
+                              title={getPlaybackStepLabel(event.action)}
+                              aria-label={`Step ${index + 1}: ${getPlaybackStepLabel(event.action)}`}
+                            >
+                              <span className="timeline-dot" />
+                              {index < recordingItem.events.length - 1 ? (
+                                <span className="timeline-line" />
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="recording-actions">
                     <span>{recordingItem.events.length} events</span>
                     <div className="recording-buttons">
