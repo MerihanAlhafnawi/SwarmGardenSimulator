@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import {
   buildStudyHref,
   getStoredStudyContext,
@@ -15,11 +15,15 @@ import {
 
 const ROWS = 3;
 const COLS = 12;
-const START_LEVEL = 1;
-const YELLOW_SHADES = ["#fff4b0", "#ffe680", "#ffd24d", "#ffbf1f", "#f2a900", "#d88f00"];
-const STEPS = 15;
-const STEP_DELAY = 50;
-const SHADE_DELAY = 2000;
+const BLUE_START_LEVEL = 11;
+const WARM_START_LEVEL = 1;
+const BLUE_COLOR = "#007fff";
+const WARM_COLORS = ["#fff1a8", "#ffe16e", "#ffd04a", "#ffbe2f", "#f5aa14", "#e58900"];
+const COLOR_STEPS = 15;
+const COLOR_STEP_DELAY = 50;
+const BLUE_HOP_DELAY = 120;
+const WARM_BAND_DELAY = 1000;
+const BLOOM_STEP_DELAY = 180;
 const LOOP_DELAY = 2400;
 
 type Cell = {
@@ -29,13 +33,13 @@ type Cell = {
   level: number;
 };
 
-const createGrid = (): Cell[][] =>
+const createGrid = (level: number): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
     Array.from({ length: COLS }, (_, col) => ({
       row,
       col,
       color: "#ffffff",
-      level: START_LEVEL,
+      level,
     })),
   );
 
@@ -60,102 +64,188 @@ const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...
 
 export default function BehaviourPage() {
   const router = useRouter();
-  const [cells, setCells] = useState<Cell[][]>(() => createGrid());
+  const [blueCells, setBlueCells] = useState<Cell[][]>(() => createGrid(BLUE_START_LEVEL));
+  const [warmCells, setWarmCells] = useState<Cell[][]>(() => createGrid(WARM_START_LEVEL));
   const [studyContext, setStudyContext] = useState<StudyContext>(getStoredStudyContext);
-  const [description, setDescription] = useState("");
+  const [blueDescription, setBlueDescription] = useState("");
+  const [warmDescription, setWarmDescription] = useState("");
   const [message, setMessage] = useState("");
-  const timersRef = useRef<number[]>([]);
+  const blueTimersRef = useRef<number[]>([]);
+  const warmTimersRef = useRef<number[]>([]);
 
   useEffect(() => {
     setStudyContext(initializeStudyContextFromSearch(window.location.search));
   }, []);
 
-  const stopDemo = () => {
+  const stopTimers = (timersRef: MutableRefObject<number[]>) => {
     for (const timer of timersRef.current) {
       window.clearTimeout(timer);
     }
     timersRef.current = [];
   };
 
-  const schedule = (callback: () => void, delay: number) => {
+  const schedule = (
+    timersRef: MutableRefObject<number[]>,
+    callback: () => void,
+    delay: number,
+  ) => {
     const timer = window.setTimeout(callback, delay);
     timersRef.current.push(timer);
   };
 
-  const updateCells = (updater: (draft: Cell[][]) => void) => {
-    setCells((current) => {
+  const updateBlueCells = (updater: (draft: Cell[][]) => void) => {
+    setBlueCells((current) => {
       const next = cloneGrid(current);
       updater(next);
       return next;
     });
   };
 
-  const resetGrid = () => {
-    updateCells((draft) => {
+  const updateWarmCells = (updater: (draft: Cell[][]) => void) => {
+    setWarmCells((current) => {
+      const next = cloneGrid(current);
+      updater(next);
+      return next;
+    });
+  };
+
+  const resetBlueGrid = () => {
+    updateBlueCells((draft) => {
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = 0; col < COLS; col += 1) {
           draft[row][col].color = "#ffffff";
-          draft[row][col].level = START_LEVEL;
+          draft[row][col].level = BLUE_START_LEVEL;
         }
       }
     });
   };
 
-  const fadeCell = (row: number, col: number, targetColor: string) => {
-    const startRgb = hexToRgb(cells[row][col].color);
+  const resetWarmGrid = () => {
+    updateWarmCells((draft) => {
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let col = 0; col < COLS; col += 1) {
+          draft[row][col].color = "#ffffff";
+          draft[row][col].level = WARM_START_LEVEL;
+        }
+      }
+    });
+  };
+
+  const fadeCell = ({
+    timersRef,
+    setCells,
+    row,
+    col,
+    startColor,
+    targetColor,
+  }: {
+    timersRef: MutableRefObject<number[]>;
+    setCells: (updater: (draft: Cell[][]) => void) => void;
+    row: number;
+    col: number;
+    startColor: string;
+    targetColor: string;
+  }) => {
+    const startRgb = hexToRgb(startColor);
     const targetRgb = hexToRgb(targetColor);
 
-    for (let step = 0; step <= STEPS; step += 1) {
-      schedule(() => {
-        const t = step / STEPS;
+    for (let step = 0; step <= COLOR_STEPS; step += 1) {
+      schedule(timersRef, () => {
+        const t = step / COLOR_STEPS;
         const color = rgbToHex(interpolateRgb(startRgb, targetRgb, t));
-        updateCells((draft) => {
+        setCells((draft) => {
           draft[row][col].color = color;
         });
-      }, step * STEP_DELAY);
+      }, step * COLOR_STEP_DELAY);
     }
   };
 
-  const setAllLevels = (level: number) => {
-    updateCells((draft) => {
-      for (let row = 0; row < ROWS; row += 1) {
-        for (let col = 0; col < COLS; col += 1) {
-          draft[row][col].level = level;
-        }
-      }
-    });
+  const animateWarmBloom = () => {
+    for (let level = WARM_START_LEVEL; level <= 11; level += 1) {
+      schedule(warmTimersRef, () => {
+        updateWarmCells((draft) => {
+          for (let row = 0; row < ROWS; row += 1) {
+            for (let col = 0; col < COLS; col += 1) {
+              draft[row][col].level = level;
+            }
+          }
+        });
+      }, (level - WARM_START_LEVEL) * BLOOM_STEP_DELAY);
+    }
   };
 
-  const playYellowBloomDemo = () => {
-    stopDemo();
-    resetGrid();
+  const playBlueLeftToRight = () => {
+    stopTimers(blueTimersRef);
+    resetBlueGrid();
+
+    let index = 0;
+    for (let col = 0; col < COLS; col += 1) {
+      for (let row = 0; row < ROWS; row += 1) {
+        schedule(blueTimersRef, () => {
+          fadeCell({
+            timersRef: blueTimersRef,
+            setCells: updateBlueCells,
+            row,
+            col,
+            startColor: "#ffffff",
+            targetColor: BLUE_COLOR,
+          });
+        }, index * BLUE_HOP_DELAY);
+        index += 1;
+      }
+    }
+
+    schedule(blueTimersRef, playBlueLeftToRight, index * BLUE_HOP_DELAY + LOOP_DELAY);
+  };
+
+  const playWarmBloomDemo = () => {
+    stopTimers(warmTimersRef);
+    resetWarmGrid();
 
     const bandCount = Math.ceil(COLS / 2);
     for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
-      const shade = YELLOW_SHADES[bandIndex % YELLOW_SHADES.length];
+      const targetColor = WARM_COLORS[bandIndex % WARM_COLORS.length];
       const startCol = bandIndex * 2;
-      const delay = bandIndex * SHADE_DELAY;
+      const delay = bandIndex * WARM_BAND_DELAY;
 
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = startCol; col < Math.min(startCol + 2, COLS); col += 1) {
-          schedule(() => fadeCell(row, col, shade), delay);
+          schedule(warmTimersRef, () => {
+            fadeCell({
+              timersRef: warmTimersRef,
+              setCells: updateWarmCells,
+              row,
+              col,
+              startColor: "#ffffff",
+              targetColor,
+            });
+          }, delay);
         }
       }
     }
 
-    const bloomDelay = bandCount * SHADE_DELAY;
-    schedule(() => setAllLevels(11), bloomDelay);
-    schedule(playYellowBloomDemo, bloomDelay + LOOP_DELAY);
+    const bloomStartDelay = bandCount * WARM_BAND_DELAY;
+    schedule(warmTimersRef, animateWarmBloom, bloomStartDelay);
+    schedule(
+      warmTimersRef,
+      playWarmBloomDemo,
+      bloomStartDelay + (11 - WARM_START_LEVEL) * BLOOM_STEP_DELAY + LOOP_DELAY,
+    );
   };
 
   useEffect(() => {
-    playYellowBloomDemo();
-    return () => stopDemo();
+    playBlueLeftToRight();
+    playWarmBloomDemo();
+
+    return () => {
+      stopTimers(blueTimersRef);
+      stopTimers(warmTimersRef);
+    };
   }, []);
 
   const handleNext = async () => {
-    if (!description.trim()) {
-      setMessage("Please type a description of this behaviour in your own words");
+    if (!blueDescription.trim() || !warmDescription.trim()) {
+      setMessage("Please describe both behaviours in your own words");
       return;
     }
 
@@ -169,8 +259,17 @@ export default function BehaviourPage() {
         studyContext,
         step: "describe-behaviour",
         data: {
-          description: description.trim(),
-          stimulus: "flowers start at 1, change through yellow shades in two-column bands, then bloom to 11 together",
+          responses: [
+            {
+              stimulus: "color left-to-right blue",
+              description: blueDescription.trim(),
+            },
+            {
+              stimulus:
+                "flowers start at 1, change from yellow to orange in two-column bands every second, then gradually bloom to 11 together",
+              description: warmDescription.trim(),
+            },
+          ],
         },
       });
       setMessage("");
@@ -185,8 +284,8 @@ export default function BehaviourPage() {
     <main className="page-shell">
       <section className="hero behaviour-hero">
         <div>
-          <h1>Describe This Behaviour</h1>
-          <p className="intro-text">Please describe this behaviour in your own words.</p>
+          <h1>Describe These Behaviours</h1>
+          <p className="intro-text">Please describe each behaviour in your own words.</p>
         </div>
       </section>
 
@@ -213,40 +312,82 @@ export default function BehaviourPage() {
             />
           </label>
         )}
-        <label className="field field-wide">
-          <span>Describe the behaviour</span>
-          <textarea
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Type here"
-            rows={3}
-          />
-        </label>
+
+        <div className="behaviour-prompt-grid">
+          <article className="behaviour-prompt-card">
+            <div className="behaviour-prompt-copy">
+              <h2>Behaviour 1</h2>
+              <p className="intro-text">Please describe this behaviour.</p>
+            </div>
+            <div className="swarm-grid" aria-label="Blue behaviour demo grid">
+              {blueCells.map((row) =>
+                row.map((cell) => (
+                  <div
+                    key={`blue-${cell.row}:${cell.col}`}
+                    className="swarm-cell behaviour-cell"
+                    style={{ background: cell.color }}
+                  >
+                    <Image
+                      src={levelImage(cell.level)}
+                      alt=""
+                      width={80}
+                      height={80}
+                      className="swarm-image"
+                    />
+                  </div>
+                )),
+              )}
+            </div>
+            <label className="field">
+              <span>Describe behaviour 1</span>
+              <textarea
+                value={blueDescription}
+                onChange={(event) => setBlueDescription(event.target.value)}
+                placeholder="Type here"
+                rows={3}
+              />
+            </label>
+          </article>
+
+          <article className="behaviour-prompt-card">
+            <div className="behaviour-prompt-copy">
+              <h2>Behaviour 2</h2>
+              <p className="intro-text">Please describe this behaviour.</p>
+            </div>
+            <div className="swarm-grid" aria-label="Warm behaviour demo grid">
+              {warmCells.map((row) =>
+                row.map((cell) => (
+                  <div
+                    key={`warm-${cell.row}:${cell.col}`}
+                    className="swarm-cell behaviour-cell"
+                    style={{ background: cell.color }}
+                  >
+                    <Image
+                      src={levelImage(cell.level)}
+                      alt=""
+                      width={80}
+                      height={80}
+                      className="swarm-image"
+                    />
+                  </div>
+                )),
+              )}
+            </div>
+            <label className="field">
+              <span>Describe behaviour 2</span>
+              <textarea
+                value={warmDescription}
+                onChange={(event) => setWarmDescription(event.target.value)}
+                placeholder="Type here"
+                rows={3}
+              />
+            </label>
+          </article>
+        </div>
+
         <div className="behaviour-actions">
           <button onClick={() => void handleNext()}>Next</button>
           {message ? <p className="behaviour-message">{message}</p> : null}
-        </div>
-      </section>
-
-      <section className="grid-card">
-        <div className="swarm-grid" aria-label="Behaviour demo grid">
-          {cells.map((row) =>
-            row.map((cell) => (
-              <div
-                key={`${cell.row}:${cell.col}`}
-                className="swarm-cell behaviour-cell"
-                style={{ background: cell.color }}
-              >
-                <Image
-                  src={levelImage(cell.level)}
-                  alt=""
-                  width={80}
-                  height={80}
-                  className="swarm-image"
-                />
-              </div>
-            )),
-          )}
         </div>
       </section>
     </main>

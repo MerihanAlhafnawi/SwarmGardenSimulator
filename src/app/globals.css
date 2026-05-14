@@ -101,6 +101,29 @@ a {
   justify-items: start;
 }
 
+.behaviour-prompt-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.behaviour-prompt-card {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(116, 83, 54, 0.14);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.behaviour-prompt-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.behaviour-prompt-copy .intro-text {
+  margin-top: 0;
+}
+
 .behaviour-message {
   color: #8a2f21;
 }
