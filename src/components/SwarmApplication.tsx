@@ -975,11 +975,10 @@ export default function SwarmApplication({
         </div>
       </section>
 
-      {mode === "design" ? (
       <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
           <div className="library-header">
             <div>
-              <h2>Saved behaviours</h2>
+              <h2>{mode === "prompt" ? "Current saved behaviour" : "Saved behaviours"}</h2>
             </div>
             <div className="library-actions">
               <button className="ghost" onClick={downloadRecordingsJson}>
@@ -991,7 +990,9 @@ export default function SwarmApplication({
           <div className="recording-list">
             {savedRecordings.length === 0 ? (
               <p className="empty-state">
-                No saved behaviours yet. Save and it will appear here.
+                {mode === "prompt"
+                  ? "No saved behaviour yet. Save and it will appear here."
+                  : "No saved behaviours yet. Save and it will appear here."}
               </p>
             ) : (
               savedRecordings.map((recordingItem) => (
@@ -1063,7 +1064,6 @@ export default function SwarmApplication({
             )}
           </div>
         </section>
-      ) : null}
 
       {tourOpen ? (
         <>
