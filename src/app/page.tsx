@@ -38,8 +38,8 @@ export default async function HomePage({
           <p>Princeton University IRB project #19319</p>
 
           <p><strong>INVESTIGATORS:</strong></p>
-          <p>Prof. Radhika Nagpal               Principal Investigator</p>
-          <p>Dr. Merihan Alhafnawi            Postdoctoral Researcher</p>
+          <p>Prof. Radhika Nagpal, Principal Investigator</p>
+          <p>Dr. Merihan Alhafnawi, Postdoctoral Researcher</p>
 
           <p><strong>INVESTIGATORS’ DEPARTMENT:</strong></p>
           <p>Mechanical and Aerospace Engineering</p>
