@@ -173,6 +173,13 @@ type StudyRecord = {
       submittedAt: string;
       data: Record<string, unknown>;
     };
+    providedPrompts?: Array<{
+      id: string;
+      promptSlot: string;
+      step: "simulation";
+      submittedAt: string;
+      data: Record<string, unknown>;
+    }>;
     implementedBehaviours?: Array<{
       id: string;
       step: "simulation";
@@ -316,10 +323,19 @@ export async function saveBehaviourRecording({
         ...(promptSlot ? { promptSlot } : {}),
       },
     };
-    const existingEntries = record.steps!.implementedBehaviours ?? [];
-    record.steps!.implementedBehaviours = promptSlot
-      ? [...existingEntries.filter((saved) => saved.data.promptSlot !== promptSlot), entry]
-      : [...existingEntries, entry];
+    if (promptSlot) {
+      const existingPromptEntries = record.steps!.providedPrompts ?? [];
+      record.steps!.providedPrompts = [
+        ...existingPromptEntries.filter((saved) => saved.promptSlot !== promptSlot),
+        {
+          ...entry,
+          promptSlot,
+        },
+      ];
+    } else {
+      const existingEntries = record.steps!.implementedBehaviours ?? [];
+      record.steps!.implementedBehaviours = [...existingEntries, entry];
+    }
     savedEntry = entry;
   } else {
     const entry = {
@@ -365,6 +381,9 @@ export async function deleteBehaviourRecording({
   const record = getBaseStudyRecord(studyContext, existing);
   if (step === "simulation") {
     record.steps!.implementedBehaviours = (record.steps!.implementedBehaviours ?? []).filter(
+      (entry) => entry.id !== behaviourId,
+    );
+    record.steps!.providedPrompts = (record.steps!.providedPrompts ?? []).filter(
       (entry) => entry.id !== behaviourId,
     );
   } else {

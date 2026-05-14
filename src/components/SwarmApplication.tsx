@@ -27,7 +27,8 @@ const START_OFFSET = 1000;
 const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
 const REPLAY_STEP_DELAY = 2000;
-const DEFAULT_STATUS_MESSAGE = 'Press "Save" when you are done, or Reset to start over';
+const DEFAULT_STATUS_MESSAGE =
+  'Press "Save" when you are done, or Reset to start over, then scroll down to revise saved behaviours.';
 const SAVED_TRANSITION_MESSAGE =
   "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour.";
 
@@ -527,6 +528,7 @@ export default function SwarmApplication({
     setSelected(new Set());
     setBuckleValue(DEFAULT_LEVEL);
     setRecordData([]);
+    setRecordingNotes("");
     setShowPromptNextButton(false);
     recordingStartRef.current = performance.now();
     setRecording(true);
