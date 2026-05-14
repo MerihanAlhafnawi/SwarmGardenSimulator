@@ -931,7 +931,7 @@ export default function SwarmApplication({
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
 
-        {mode === "prompt" && showPromptNextButton ? (
+        {mode === "prompt" && (showPromptNextButton || savedRecordings.length > 0) ? (
           <div className="toolbar next-row">
             <button className="intro-next" onClick={handlePromptNext}>
               Next
