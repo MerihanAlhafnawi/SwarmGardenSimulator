@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  advanceStudyRun,
   getStoredStudyContext,
   hasRequiredStudyContext,
   initializeStudyContextFromSearch,
@@ -63,6 +64,8 @@ export default function SurveyPage() {
           feedback: feedback.trim(),
         },
       });
+      const nextContext = advanceStudyRun(studyContext);
+      setStudyContext(nextContext);
       setSubmitted(true);
       setMessage("");
     } catch (error) {

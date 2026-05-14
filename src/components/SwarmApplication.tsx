@@ -50,6 +50,7 @@ type SavedRecording = {
   notes: string;
   createdAtLabel: string;
   events: RecordingEvent[];
+  persisted?: boolean;
 };
 
 type PlaybackProgress = {
@@ -561,10 +562,29 @@ export default function SwarmApplication({
       return false;
     }
 
+    if (mode === "prompt") {
+      const localSavedRecording = {
+        id: promptSlot ?? `prompt-${Date.now()}`,
+        title: description,
+        notes: description,
+        createdAtLabel: new Date().toLocaleString(),
+        events: recordData,
+        persisted: false,
+      };
+
+      setSavedRecordings([localSavedRecording]);
+      setSaveState("Saved for this step");
+      resetSwarm();
+      setRecordingStatus("Thank you, your behaviour has been saved.");
+      setShowPromptNextButton(false);
+      setTransitionMessage(SAVED_TRANSITION_MESSAGE);
+      return true;
+    }
+
     try {
       const savedEntry = await saveBehaviourRecording({
         studyContext,
-        step: mode === "prompt" ? "simulation" : "design-behaviour",
+        step: "design-behaviour",
         description,
         events: recordData as Record<string, unknown>[],
         promptSlot,
@@ -576,18 +596,13 @@ export default function SwarmApplication({
         notes: description,
         createdAtLabel: new Date(savedEntry.submittedAt).toLocaleString(),
         events: recordData,
+        persisted: true,
       };
 
-      setSavedRecordings((current) =>
-        mode === "prompt" ? [nextSavedRecording] : [nextSavedRecording, ...current],
-      );
+      setSavedRecordings((current) => [nextSavedRecording, ...current]);
       setSaveState("Saved to Firestore for this session");
       resetSwarm();
       setRecordingStatus("Thank you, your behaviour has been saved.");
-      if (mode === "prompt") {
-        setShowPromptNextButton(false);
-        setTransitionMessage(SAVED_TRANSITION_MESSAGE);
-      }
       return true;
     } catch (error) {
       console.error(error);
@@ -596,6 +611,47 @@ export default function SwarmApplication({
           ? error.message
           : "Unknown Firebase write error";
       setSaveState(`Save failed: ${message}`);
+      return false;
+    }
+  };
+
+  const persistPromptRecording = async () => {
+    if (mode !== "prompt" || savedRecordings.length === 0) {
+      return true;
+    }
+
+    const currentSaved = savedRecordings[0];
+    if (currentSaved.persisted) {
+      return true;
+    }
+
+    try {
+      const savedEntry = await saveBehaviourRecording({
+        studyContext,
+        step: "simulation",
+        description: currentSaved.title,
+        events: currentSaved.events as Record<string, unknown>[],
+        promptSlot,
+      });
+
+      setSavedRecordings([
+        {
+          ...currentSaved,
+          id: savedEntry.id,
+          createdAtLabel: new Date(savedEntry.submittedAt).toLocaleString(),
+          persisted: true,
+        },
+      ]);
+      setSaveState("Saved to Firestore for this step");
+      return true;
+    } catch (error) {
+      console.error(error);
+      const message =
+        error instanceof FirestoreError || error instanceof Error
+          ? error.message
+          : "Unknown Firebase write error";
+      setSaveState(`Save failed: ${message}`);
+      setRecordingStatus(`Save failed: ${message}`);
       return false;
     }
   };
@@ -722,7 +778,11 @@ export default function SwarmApplication({
     }
   };
 
-  const proceedFromSavedTransition = () => {
+  const proceedFromSavedTransition = async () => {
+    const persisted = await persistPromptRecording();
+    if (!persisted) {
+      return;
+    }
     setTransitionMessage("");
     router.push(buildStudyHref(promptNextHref, studyContext));
   };
@@ -733,9 +793,14 @@ export default function SwarmApplication({
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
   };
 
-  const handlePromptNext = () => {
+  const handlePromptNext = async () => {
     if (savedRecordings.length === 0) {
       setRecordingStatus("Please implement a behaviour first.");
+      return;
+    }
+
+    const persisted = await persistPromptRecording();
+    if (!persisted) {
       return;
     }
 
@@ -1052,10 +1117,18 @@ export default function SwarmApplication({
                       </button>
                       <button
                         className="danger"
-                        onClick={() => void deleteRecording(recordingItem.id)}
+                        onClick={() =>
+                          recordingItem.persisted
+                            ? void deleteRecording(recordingItem.id)
+                            : setSavedRecordings([])
+                        }
                         disabled={deletingRecordingId === recordingItem.id}
                       >
-                        {deletingRecordingId === recordingItem.id ? "Deleting..." : "Delete"}
+                        {recordingItem.persisted
+                          ? deletingRecordingId === recordingItem.id
+                            ? "Deleting..."
+                            : "Delete"
+                          : "Remove"}
                       </button>
                     </div>
                   </div>

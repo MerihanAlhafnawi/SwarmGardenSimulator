@@ -10,6 +10,7 @@ export type StudyContext = {
   sessionId: string;
   manualParticipantId: string;
   manualSessionStamp: string;
+  studyRunId: string;
 };
 
 const EMPTY_STUDY_CONTEXT: StudyContext = {
@@ -19,6 +20,7 @@ const EMPTY_STUDY_CONTEXT: StudyContext = {
   sessionId: "",
   manualParticipantId: "",
   manualSessionStamp: "",
+  studyRunId: "",
 };
 
 export function getStoredStudyContext(): StudyContext {
@@ -43,6 +45,7 @@ export function getStoredStudyContext(): StudyContext {
       sessionId: parsed.sessionId ?? "",
       manualParticipantId: parsed.manualParticipantId ?? "",
       manualSessionStamp: parsed.manualSessionStamp ?? "",
+      studyRunId: parsed.studyRunId ?? "",
     };
   } catch {
     return EMPTY_STUDY_CONTEXT;
@@ -53,6 +56,13 @@ function createManualSessionStamp() {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
+function createStudyRunId() {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  return `${stamp}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function storeStudyContext(value: Partial<StudyContext>) {
@@ -68,10 +78,15 @@ export function storeStudyContext(value: Partial<StudyContext>) {
     sessionId: value.sessionId ?? current.sessionId,
     manualParticipantId: value.manualParticipantId ?? current.manualParticipantId,
     manualSessionStamp: value.manualSessionStamp ?? current.manualSessionStamp,
+    studyRunId: value.studyRunId ?? current.studyRunId,
   };
 
   if (next.source === "manual" && next.manualParticipantId && !next.manualSessionStamp) {
     next.manualSessionStamp = createManualSessionStamp();
+  }
+
+  if (!next.studyRunId && (next.prolificPid || next.manualParticipantId)) {
+    next.studyRunId = createStudyRunId();
   }
 
   window.localStorage.setItem(STUDY_CONTEXT_STORAGE_KEY, JSON.stringify(next));
@@ -84,6 +99,7 @@ export function getStudyContextFromSearch(search: string): Partial<StudyContext>
   const sessionId = params.get("SESSION_ID") ?? "";
   const manualParticipantId = params.get("PARTICIPANT_ID") ?? "";
   const manualSessionStamp = params.get("MANUAL_SESSION_STAMP") ?? "";
+  const studyRunId = params.get("STUDY_RUN_ID") ?? "";
   return {
     source: prolificPid ? "prolific" : manualParticipantId ? "manual" : undefined,
     prolificPid,
@@ -91,6 +107,7 @@ export function getStudyContextFromSearch(search: string): Partial<StudyContext>
     sessionId,
     manualParticipantId,
     manualSessionStamp,
+    studyRunId,
   };
 }
 
@@ -126,6 +143,9 @@ export function buildStudyHref(pathname: string, context: Partial<StudyContext>,
   }
   if (context.source === "manual" && context.manualSessionStamp) {
     params.set("MANUAL_SESSION_STAMP", context.manualSessionStamp);
+  }
+  if (context.studyRunId) {
+    params.set("STUDY_RUN_ID", context.studyRunId);
   }
   if (extra) {
     for (const [key, value] of Object.entries(extra)) {
@@ -175,13 +195,14 @@ type StudyRecord = {
 };
 
 function getStudyRecordId(studyContext: StudyContext) {
+  const runId = studyContext.studyRunId || createStudyRunId();
+
   if (studyContext.prolificPid) {
-    return `prolific-${studyContext.prolificPid}-${studyContext.sessionId || studyContext.studyId || "session"}`;
+    return `prolific-${studyContext.prolificPid}-${studyContext.sessionId || studyContext.studyId || "session"}-${runId}`;
   }
 
   if (studyContext.manualParticipantId) {
-    const suffix = studyContext.manualSessionStamp || studyContext.sessionId || studyContext.studyId || createManualSessionStamp();
-    return `manual-${studyContext.manualParticipantId}-${suffix}`;
+    return `manual-${studyContext.manualParticipantId}-${runId}`;
   }
 
   throw new Error("Participant identifier missing");
@@ -208,12 +229,22 @@ function getBaseStudyRecord(studyContext: StudyContext, existing?: StudyRecord |
     sessionId: studyContext.sessionId,
     manualParticipantId: studyContext.manualParticipantId,
     manualSessionStamp: studyContext.manualSessionStamp,
+    studyRunId: studyContext.studyRunId,
     steps: existing?.steps ?? {},
   };
 }
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+export function advanceStudyRun(context: StudyContext): StudyContext {
+  const nextContext = {
+    ...context,
+    studyRunId: createStudyRunId(),
+  };
+  storeStudyContext(nextContext);
+  return nextContext;
 }
 
 export async function saveStudyStep({
