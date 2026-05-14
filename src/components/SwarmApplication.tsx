@@ -749,7 +749,7 @@ export default function SwarmApplication({
           <h1>
             {mode === "prompt"
               ? "Please implement a behaviour that fits this description"
-              : "Please implement your own behaviour and describe it"}
+              : "Please implement 2 or more new behaviours of your own and describe them"}
           </h1>
           {mode === "design" ? (
             <button className="ghost" onClick={startTour}>
@@ -793,7 +793,7 @@ export default function SwarmApplication({
             </div>
           ) : (
             <label className={`field field-wide ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
-              <span>Describe a behaviour</span>
+              <span>Describe each new behaviour you create</span>
               <textarea
                 value={recordingNotes}
                 onChange={(event) => setRecordingNotes(event.target.value)}
@@ -932,7 +932,7 @@ export default function SwarmApplication({
                 router.push(buildStudyHref("/survey", studyContext));
               }}
             >
-              Finish Study
+              Next
             </button>
           ) : null}
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
