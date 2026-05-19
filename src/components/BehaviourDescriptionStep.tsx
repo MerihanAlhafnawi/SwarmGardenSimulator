@@ -32,11 +32,6 @@ type StoredResponse = {
   description: string;
 };
 
-type DemoProgressStep = {
-  label: string;
-  delay: number;
-};
-
 type StepConfig = {
   title: string;
   helperText: string;
@@ -146,8 +141,7 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   const [studyContext, setStudyContext] = useState<StudyContext>(getStoredStudyContext);
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
-  const [demoProgressSteps, setDemoProgressSteps] = useState<DemoProgressStep[]>([]);
-  const [activeDemoStep, setActiveDemoStep] = useState(-1);
+  const [demoProgress, setDemoProgress] = useState(0);
   const timersRef = useRef<number[]>([]);
 
   useEffect(() => {
@@ -164,7 +158,7 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
       window.clearTimeout(timer);
     }
     ref.current = [];
-    setActiveDemoStep(-1);
+    setDemoProgress(0);
   };
 
   const schedule = (callback: () => void, delay: number) => {
@@ -222,23 +216,43 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     });
   };
 
+  const getDemoDuration = () => {
+    if (config.demoKind === "blue-left-to-right") {
+      return 12 * 3 * 120 + LOOP_DELAY;
+    }
+
+    if (config.demoKind === "yellow-orange-bloom") {
+      const bandCount = Math.ceil(COLS / 2);
+      return bandCount * WARM_BAND_DELAY + 10 * BLOOM_STEP_DELAY + LOOP_DELAY;
+    }
+
+    return 2200 + (RANDOM_BLOOM_SEQUENCE.length - 1) * 350 + LOOP_DELAY;
+  };
+
+  const startProgressBar = (duration: number) => {
+    const tickCount = 40;
+    setDemoProgress(0);
+
+    for (let tick = 1; tick <= tickCount; tick += 1) {
+      schedule(() => {
+        setDemoProgress(tick / tickCount);
+      }, Math.round((duration * tick) / tickCount));
+    }
+  };
+
   const playDemoByKind = () => {
     resetGrid();
-    let progressSteps: DemoProgressStep[] = [];
+    const duration = getDemoDuration();
+    startProgressBar(duration);
 
     if (config.demoKind === "blue-left-to-right") {
       let index = 0;
       for (let col = 0; col < COLS; col += 1) {
-        progressSteps = [...progressSteps, { label: `Blue column ${col + 1}`, delay: index * 120 }];
         for (let row = 0; row < ROWS; row += 1) {
           schedule(() => fadeCell(row, col, BLUE_COLOR), index * 120);
           index += 1;
         }
       }
-      setDemoProgressSteps(progressSteps);
-      progressSteps.forEach((step, stepIndex) => {
-        schedule(() => setActiveDemoStep(stepIndex), step.delay);
-      });
       return;
     }
 
@@ -249,10 +263,6 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
         const targetColor = WARM_COLORS[bandIndex % WARM_COLORS.length];
         const startCol = bandIndex * 2;
         const delay = bandIndex * WARM_BAND_DELAY;
-        progressSteps = [
-          ...progressSteps,
-          { label: `Warm band ${bandIndex + 1}`, delay },
-        ];
 
         for (let row = 0; row < ROWS; row += 1) {
           for (let col = startCol; col < Math.min(startCol + 2, COLS); col += 1) {
@@ -263,14 +273,11 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
 
       const bloomStartDelay = bandCount * WARM_BAND_DELAY;
       for (let level = 1; level <= 11; level += 1) {
-        const delay = bloomStartDelay + (level - 1) * BLOOM_STEP_DELAY;
-        progressSteps = [...progressSteps, { label: `Bloom level ${level}`, delay }];
-        schedule(() => setAllLevels(level), delay);
+        schedule(
+          () => setAllLevels(level),
+          bloomStartDelay + (level - 1) * BLOOM_STEP_DELAY,
+        );
       }
-      setDemoProgressSteps(progressSteps);
-      progressSteps.forEach((step, stepIndex) => {
-        schedule(() => setActiveDemoStep(stepIndex), step.delay);
-      });
       return;
     }
 
@@ -278,24 +285,13 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     for (let index = 0; index < centerOutColumns.length; index += 1) {
       const targetColor = RAINBOW_COLORS[index];
       const col = centerOutColumns[index];
-      const delay = index * 220;
-      progressSteps = [...progressSteps, { label: `Rainbow band ${index + 1}`, delay }];
       for (let row = 0; row < ROWS; row += 1) {
-        schedule(() => fadeCell(row, col, targetColor), delay);
+        schedule(() => fadeCell(row, col, targetColor), index * 220);
       }
     }
 
     RANDOM_BLOOM_SEQUENCE.forEach((entry, index) => {
-      const delay = 2200 + index * 350;
-      progressSteps = [
-        ...progressSteps,
-        { label: `Random bloom ${index + 1}`, delay },
-      ];
-      schedule(() => setCellLevel(entry.row, entry.col, entry.level), delay);
-    });
-    setDemoProgressSteps(progressSteps);
-    progressSteps.forEach((step, stepIndex) => {
-      schedule(() => setActiveDemoStep(stepIndex), step.delay);
+      schedule(() => setCellLevel(entry.row, entry.col, entry.level), 2200 + index * 350);
     });
   };
 
@@ -389,28 +385,12 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
             </label>
           )}
           <div className="study-progress" aria-label="Behaviour timeline">
-            <span className="study-progress-caption">
-              {activeDemoStep >= 0 && demoProgressSteps[activeDemoStep]
-                ? demoProgressSteps[activeDemoStep].label
-                : "Behaviour timeline"}
-            </span>
-            <div className="playback-timeline study-progress-timeline">
-              {demoProgressSteps.map((step, index) => {
-                const isCurrent = index === activeDemoStep;
-                const isComplete = index < activeDemoStep;
-
-                return (
-                  <div
-                    key={`${config.responseKey}-${step.label}-${index}`}
-                    className={`timeline-step ${isCurrent ? "current" : ""} ${isComplete ? "complete" : ""}`}
-                    title={step.label}
-                    aria-label={step.label}
-                  >
-                    <span className="timeline-dot" />
-                    {index < demoProgressSteps.length - 1 ? <span className="timeline-line" /> : null}
-                  </div>
-                );
-              })}
+            <span className="study-progress-caption">Behaviour progress</span>
+            <div className="behaviour-progress-bar" aria-hidden="true">
+              <span
+                className="behaviour-progress-fill"
+                style={{ width: `${Math.round(demoProgress * 100)}%` }}
+              />
             </div>
           </div>
         </div>
