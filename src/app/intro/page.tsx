@@ -9,7 +9,7 @@ export default async function IntroPage({
   const params = await searchParams;
 
   const nextHref = buildStudyHref(
-    "/application",
+    "/describe",
     {
       prolificPid: typeof params.PROLIFIC_PID === "string" ? params.PROLIFIC_PID : "",
       studyId: typeof params.STUDY_ID === "string" ? params.STUDY_ID : "",
@@ -25,7 +25,6 @@ export default async function IntroPage({
             ? "manual"
             : "unknown",
     },
-    { tour: "1" },
   );
 
   return (
@@ -34,7 +33,7 @@ export default async function IntroPage({
         <div className="intro-copy">
           <h1>Swarm Garden Simulator</h1>
           <p className="intro-text">
-            Watch the instructions first, then continue into the application.
+            Watch the instructions first, then continue to the study.
           </p>
         </div>
 

@@ -314,13 +314,13 @@ export default function SwarmApplication({
 
   const skipTour = () => {
     closeTour();
-    router.push(buildStudyHref("/describe", studyContext));
+    router.push(buildStudyHref("/implement", studyContext));
   };
 
   const nextTourStep = () => {
     if (tourStepIndex === TOUR_STEPS.length - 1) {
       closeTour();
-      router.push(buildStudyHref("/describe", studyContext));
+      router.push(buildStudyHref("/implement", studyContext));
       return;
     }
 
