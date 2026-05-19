@@ -142,6 +142,7 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   const [message, setMessage] = useState("");
   const [demoProgress, setDemoProgress] = useState(0);
   const timersRef = useRef<number[]>([]);
+  const hasAutoPlayedRef = useRef(false);
 
   useEffect(() => {
     setStudyContext(initializeStudyContextFromSearch(window.location.search));
@@ -289,7 +290,14 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     });
   };
 
-  useEffect(() => () => stopDemo(timersRef), []);
+  useEffect(() => {
+    if (!hasAutoPlayedRef.current) {
+      hasAutoPlayedRef.current = true;
+      replayBehaviour();
+    }
+
+    return () => stopDemo(timersRef);
+  }, [config.demoKind, config.initialLevel]);
 
   const replayBehaviour = () => {
     stopDemo(timersRef);
