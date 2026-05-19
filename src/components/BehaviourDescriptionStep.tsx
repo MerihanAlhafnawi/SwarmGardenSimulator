@@ -45,8 +45,7 @@ type StepConfig = {
 };
 
 const BLUE_COLOR = "#007fff";
-const WARM_COLORS = ["#fff1a8", "#ffe16e", "#ffd04a", "#ffbe2f", "#f5aa14", "#e58900"];
-const WARM_BAND_DELAY = 1000;
+const WARM_COLORS = ["#fff1a8", "#ece08f", "#cfc8a2", "#a6aeb6", "#738fc2", "#2f5aa8"];
 const BLOOM_STEP_DELAY = 180;
 const RAINBOW_COLORS = [
   "#ff4d4d",
@@ -218,15 +217,14 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
 
   const getDemoDuration = () => {
     if (config.demoKind === "blue-left-to-right") {
-      return 12 * 3 * 120 + LOOP_DELAY;
+      return 12 * 3 * 120 + 1200;
     }
 
     if (config.demoKind === "yellow-orange-bloom") {
-      const bandCount = Math.ceil(COLS / 2);
-      return bandCount * WARM_BAND_DELAY + 10 * BLOOM_STEP_DELAY + LOOP_DELAY;
+      return COLOR_STEPS * COLOR_STEP_DELAY + 10 * BLOOM_STEP_DELAY + 1200;
     }
 
-    return 2200 + (RANDOM_BLOOM_SEQUENCE.length - 1) * 350 + LOOP_DELAY;
+    return 2200 + (RANDOM_BLOOM_SEQUENCE.length - 1) * 350 + 1200;
   };
 
   const startProgressBar = (duration: number) => {
@@ -257,21 +255,17 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     }
 
     if (config.demoKind === "yellow-orange-bloom") {
-      const bandCount = Math.ceil(COLS / 2);
-
-      for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
-        const targetColor = WARM_COLORS[bandIndex % WARM_COLORS.length];
-        const startCol = bandIndex * 2;
-        const delay = bandIndex * WARM_BAND_DELAY;
-
+      for (let colorIndex = 0; colorIndex < WARM_COLORS.length; colorIndex += 1) {
+        const targetColor = WARM_COLORS[colorIndex];
+        const startCol = colorIndex * 2;
         for (let row = 0; row < ROWS; row += 1) {
           for (let col = startCol; col < Math.min(startCol + 2, COLS); col += 1) {
-            schedule(() => fadeCell(row, col, targetColor), delay);
+            schedule(() => fadeCell(row, col, targetColor), 0);
           }
         }
       }
 
-      const bloomStartDelay = bandCount * WARM_BAND_DELAY;
+      const bloomStartDelay = COLOR_STEPS * COLOR_STEP_DELAY;
       for (let level = 1; level <= 11; level += 1) {
         schedule(
           () => setAllLevels(level),
@@ -295,17 +289,12 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     });
   };
 
-  useEffect(() => {
-    const playLoop = () => {
-      stopDemo(timersRef);
-      playDemoByKind();
-      schedule(playLoop, LOOP_DELAY + 12000);
-    };
+  useEffect(() => () => stopDemo(timersRef), []);
 
-    playLoop();
-
-    return () => stopDemo(timersRef);
-  }, [config.demoKind, config.initialLevel]);
+  const replayBehaviour = () => {
+    stopDemo(timersRef);
+    playDemoByKind();
+  };
 
   const handleNext = async () => {
     if (!description.trim()) {
@@ -393,6 +382,9 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
               />
             </div>
           </div>
+          <button type="button" className="ghost" onClick={replayBehaviour}>
+            Replay behaviour
+          </button>
         </div>
 
         <div className="swarm-grid" aria-label={`${config.title} demo grid`}>
