@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { buildStudyHref } from "@/lib/study";
+import IntroGate from "@/components/IntroGate";
 
 export default async function IntroPage({
   searchParams,
@@ -38,18 +38,7 @@ export default async function IntroPage({
           </p>
         </div>
 
-        <div className="video-placeholder">
-          <video className="intro-video" controls playsInline preload="metadata">
-            <source src="/intro_video.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-
-        <div className="intro-actions">
-          <Link href={nextHref} className="intro-next">
-            Next
-          </Link>
-        </div>
+        <IntroGate nextHref={nextHref} />
       </section>
     </main>
   );

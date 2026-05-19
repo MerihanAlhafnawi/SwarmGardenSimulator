@@ -454,6 +454,41 @@ button:disabled {
   justify-content: flex-end;
 }
 
+.study-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.study-progress {
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.study-progress-caption {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.study-progress-timeline {
+  min-width: 220px;
+}
+
+.intro-next-disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.intro-helper {
+  color: var(--muted);
+  margin: 0;
+}
+
 .recording-buttons {
   display: flex;
   flex-wrap: wrap;

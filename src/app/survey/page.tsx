@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import StudyStepProgress from "@/components/StudyStepProgress";
 import {
   advanceStudyRun,
   getStoredStudyContext,
@@ -82,26 +83,29 @@ export default function SurveyPage() {
         </div>
 
         <section className="controls-card survey-card">
-          {studyContext.source === "prolific" ? (
-            <p className="study-source-badge">Prolific participant ID connected</p>
-          ) : (
-            <label className="field participant-field">
-              <span>Participant ID</span>
-              <input
-                value={studyContext.manualParticipantId}
-                onChange={(event) => {
-                  const nextContext: StudyContext = {
-                    ...studyContext,
-                    source: "manual",
-                    manualParticipantId: event.target.value,
-                  };
-                  setStudyContext(nextContext);
-                  storeStudyContext(nextContext);
-                }}
-                placeholder="Type here"
-              />
-            </label>
-          )}
+          <div className="study-header-row">
+            {studyContext.source === "prolific" ? (
+              <p className="study-source-badge">Prolific participant ID connected</p>
+            ) : (
+              <label className="field participant-field">
+                <span>Participant ID</span>
+                <input
+                  value={studyContext.manualParticipantId}
+                  onChange={(event) => {
+                    const nextContext: StudyContext = {
+                      ...studyContext,
+                      source: "manual",
+                      manualParticipantId: event.target.value,
+                    };
+                    setStudyContext(nextContext);
+                    storeStudyContext(nextContext);
+                  }}
+                  placeholder="Type here"
+                />
+              </label>
+            )}
+            <StudyStepProgress currentStep={7} totalSteps={7} />
+          </div>
 
           <div className="survey-question">
             <p>How familiar are you with robots?</p>

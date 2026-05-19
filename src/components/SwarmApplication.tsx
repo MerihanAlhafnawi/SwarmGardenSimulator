@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { FirestoreError } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
+import StudyStepProgress from "@/components/StudyStepProgress";
 import {
   buildStudyHref,
   deleteBehaviourRecording,
@@ -219,6 +220,8 @@ export default function SwarmApplication({
 
   const isFirebaseReady = Boolean(getFirebaseDb());
   const activeTourStep = TOUR_STEPS[tourStepIndex];
+  const progressStep =
+    mode === "prompt" ? (promptSlot === "provided-description-1" ? 4 : 5) : 6;
 
   useEffect(() => {
     setSaveState(
@@ -721,34 +724,6 @@ export default function SwarmApplication({
     }, Math.max(events.length - 1, 0) * REPLAY_STEP_DELAY + 600);
   };
 
-  const downloadRecordingsJson = () => {
-    if (savedRecordings.length === 0) {
-      setSaveState("No saved recordings to download");
-      return;
-    }
-
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      count: savedRecordings.length,
-      recordings: savedRecordings,
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const dateStamp = new Date().toISOString().slice(0, 10);
-
-    link.href = url;
-    link.download = `swarm-garden-recordings-${dateStamp}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setSaveState("Downloaded recordings JSON");
-  };
-
   const deleteRecording = async (recordingId: string) => {
     const confirmed = window.confirm(
       "Are you sure? This will be permanent and delete the entry from the database.",
@@ -828,26 +803,29 @@ export default function SwarmApplication({
 
       <section className="controls-card">
         <div className="toolbar">
-          {studyContext.source === "prolific" ? (
-            <div className="study-source-badge">Prolific participant ID connected</div>
-          ) : (
-            <label className="field participant-field">
-              <span>Participant ID</span>
-              <input
-                value={studyContext.manualParticipantId}
-                onChange={(event) => {
-                  const nextContext: StudyContext = {
-                    ...studyContext,
-                    source: "manual",
-                    manualParticipantId: event.target.value,
-                  };
-                  setStudyContext(nextContext);
-                  storeStudyContext(nextContext);
-                }}
-                placeholder="Type here"
-              />
-            </label>
-          )}
+          <div className="study-header-row">
+            {studyContext.source === "prolific" ? (
+              <div className="study-source-badge">Prolific participant ID connected</div>
+            ) : (
+              <label className="field participant-field">
+                <span>Participant ID</span>
+                <input
+                  value={studyContext.manualParticipantId}
+                  onChange={(event) => {
+                    const nextContext: StudyContext = {
+                      ...studyContext,
+                      source: "manual",
+                      manualParticipantId: event.target.value,
+                    };
+                    setStudyContext(nextContext);
+                    storeStudyContext(nextContext);
+                  }}
+                  placeholder="Type here"
+                />
+              </label>
+            )}
+            <StudyStepProgress currentStep={progressStep} totalSteps={7} />
+          </div>
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
               <span>Please implement a behaviour that fits this description</span>
@@ -1046,11 +1024,6 @@ export default function SwarmApplication({
           <div className="library-header">
             <div>
               <h2>{mode === "prompt" ? "Current saved behaviour" : "Saved behaviours"}</h2>
-            </div>
-            <div className="library-actions">
-              <button className="ghost" onClick={downloadRecordingsJson}>
-                Download JSON
-              </button>
             </div>
           </div>
 

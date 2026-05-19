@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import StudyStepProgress from "@/components/StudyStepProgress";
 import {
   buildStudyHref,
   getStoredStudyContext,
@@ -142,6 +143,8 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
   const timersRef = useRef<number[]>([]);
+  const progressStep =
+    config.responseKey === "behaviour-1" ? 1 : config.responseKey === "behaviour-2" ? 2 : 3;
 
   useEffect(() => {
     setStudyContext(initializeStudyContextFromSearch(window.location.search));
@@ -330,28 +333,31 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
       </section>
 
       <section className="controls-card behaviour-card">
-        {studyContext.source === "prolific" ? (
-          <p className="study-source-badge">Prolific participant ID connected</p>
-        ) : (
-          <label className="field participant-field">
-            <span>Participant ID</span>
-            <input
-              value={studyContext.manualParticipantId}
-              onChange={(event) => {
-                const nextContext: StudyContext = {
-                  ...studyContext,
-                  source: "manual",
-                  manualParticipantId: event.target.value,
-                  manualSessionStamp:
-                    event.target.value === studyContext.manualParticipantId ? studyContext.manualSessionStamp : "",
-                };
-                setStudyContext(nextContext);
-                storeStudyContext(nextContext);
-              }}
-              placeholder="Type here"
-            />
-          </label>
-        )}
+        <div className="study-header-row">
+          {studyContext.source === "prolific" ? (
+            <p className="study-source-badge">Prolific participant ID connected</p>
+          ) : (
+            <label className="field participant-field">
+              <span>Participant ID</span>
+              <input
+                value={studyContext.manualParticipantId}
+                onChange={(event) => {
+                  const nextContext: StudyContext = {
+                    ...studyContext,
+                    source: "manual",
+                    manualParticipantId: event.target.value,
+                    manualSessionStamp:
+                      event.target.value === studyContext.manualParticipantId ? studyContext.manualSessionStamp : "",
+                  };
+                  setStudyContext(nextContext);
+                  storeStudyContext(nextContext);
+                }}
+                placeholder="Type here"
+              />
+            </label>
+          )}
+          <StudyStepProgress currentStep={progressStep} totalSteps={7} />
+        </div>
 
         <div className="swarm-grid" aria-label={`${config.title} demo grid`}>
           {cells.map((row) =>
