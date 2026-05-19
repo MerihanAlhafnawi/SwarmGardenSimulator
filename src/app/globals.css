@@ -511,9 +511,18 @@ button:disabled {
   gap: 10px;
 }
 
+.recording-buttons-wide {
+  align-items: flex-start;
+}
+
 .playback-progress {
   display: grid;
   gap: 10px;
+}
+
+.playback-progress-inline {
+  min-width: 220px;
+  flex: 1 1 260px;
 }
 
 .playback-progress-header {

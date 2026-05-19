@@ -164,6 +164,9 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
 
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
 const TOUR_SELECTION = ["1:4", "1:5", "1:6"];
+const COLOR_FLOW_DURATION = ROWS * COLS * HOP_DELAY + STEPS * STEP_DELAY;
+const BUCKLE_FLOW_DURATION = ROWS * COLS * START_OFFSET + BUCKLE_DURATION;
+const REPLAY_PAUSE = 2000;
 const getPlaybackStepLabel = (action: string) => {
   switch (action) {
     case "color_selected":
@@ -705,23 +708,42 @@ export default function SwarmApplication({
     }
   };
 
+  const getReplayActionDuration = (entry: RecordingEvent) => {
+    switch (entry.action) {
+      case "color_flow":
+        return COLOR_FLOW_DURATION;
+      case "buckle_flow":
+        return BUCKLE_FLOW_DURATION;
+      case "color_all":
+      case "color_selected":
+        return STEPS * STEP_DELAY;
+      case "buckle_all":
+      case "buckle_selected":
+        return 300;
+      default:
+        return 500;
+    }
+  };
+
   const playbackRecording = (recordingId: string, events: RecordingEvent[]) => {
     resetSwarm();
     stopFlow();
     setPlayingRecordingId(recordingId);
     setRecordingStatus("Playing saved behaviour");
     setPlaybackProgress({ recordingId, activeIndex: -1 });
+    let playbackOffset = 0;
     events.forEach((entry, index) => {
       schedule(() => {
         setPlaybackProgress({ recordingId, activeIndex: index });
         runPlaybackAction(entry);
-      }, index * REPLAY_STEP_DELAY);
+      }, playbackOffset);
+      playbackOffset += getReplayActionDuration(entry) + REPLAY_PAUSE;
     });
     schedule(() => {
       setPlayingRecordingId(null);
       setPlaybackProgress(null);
       setRecordingStatus(DEFAULT_STATUS_MESSAGE);
-    }, Math.max(events.length - 1, 0) * REPLAY_STEP_DELAY + 600);
+    }, Math.max(playbackOffset, 0) + 600);
   };
 
   const deleteRecording = async (recordingId: string) => {
@@ -1042,54 +1064,54 @@ export default function SwarmApplication({
                     <p>{recordingItem.createdAtLabel}</p>
                   </div>
                   <p className="recording-notes">{recordingItem.notes || "No notes yet."}</p>
-                  {recordingItem.events.length > 0 ? (
-                    <div className="playback-progress">
-                      <div className="playback-progress-header">
-                        <span>Replay progress</span>
-                        <span>
-                          {playingRecordingId === recordingItem.id && playbackProgress
-                            ? playbackProgress.activeIndex >= 0
-                              ? `Step ${playbackProgress.activeIndex + 1} of ${recordingItem.events.length}`
-                              : "Starting replay"
-                            : `${recordingItem.events.length} steps`}
-                        </span>
-                      </div>
-                      <div className="playback-timeline" aria-label="Replay timeline">
-                        {recordingItem.events.map((event, index) => {
-                          const isCurrent =
-                            playingRecordingId === recordingItem.id &&
-                            playbackProgress?.recordingId === recordingItem.id &&
-                            playbackProgress.activeIndex === index;
-                          const isComplete =
-                            playingRecordingId === recordingItem.id &&
-                            playbackProgress?.recordingId === recordingItem.id &&
-                            playbackProgress.activeIndex > index;
-
-                          return (
-                            <div
-                              key={`${recordingItem.id}-${index}`}
-                              className={`timeline-step ${isCurrent ? "current" : ""} ${
-                                isComplete ? "complete" : ""
-                              }`}
-                              title={getPlaybackStepLabel(event.action)}
-                              aria-label={`Step ${index + 1}: ${getPlaybackStepLabel(event.action)}`}
-                            >
-                              <span className="timeline-dot" />
-                              {index < recordingItem.events.length - 1 ? (
-                                <span className="timeline-line" />
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
                   <div className="recording-actions">
                     <span>{recordingItem.events.length} events</span>
-                    <div className="recording-buttons">
+                    <div className="recording-buttons recording-buttons-wide">
                       <button onClick={() => playbackRecording(recordingItem.id, recordingItem.events)}>
                         {playingRecordingId === recordingItem.id ? "Playing" : "Play"}
                       </button>
+                      {recordingItem.events.length > 0 ? (
+                        <div className="playback-progress playback-progress-inline">
+                          <div className="playback-progress-header">
+                            <span>Replay progress</span>
+                            <span>
+                              {playingRecordingId === recordingItem.id && playbackProgress
+                                ? playbackProgress.activeIndex >= 0
+                                  ? `Step ${playbackProgress.activeIndex + 1} of ${recordingItem.events.length}`
+                                  : "Starting replay"
+                                : `${recordingItem.events.length} steps`}
+                            </span>
+                          </div>
+                          <div className="playback-timeline" aria-label="Replay timeline">
+                            {recordingItem.events.map((event, index) => {
+                              const isCurrent =
+                                playingRecordingId === recordingItem.id &&
+                                playbackProgress?.recordingId === recordingItem.id &&
+                                playbackProgress.activeIndex === index;
+                              const isComplete =
+                                playingRecordingId === recordingItem.id &&
+                                playbackProgress?.recordingId === recordingItem.id &&
+                                playbackProgress.activeIndex > index;
+
+                              return (
+                                <div
+                                  key={`${recordingItem.id}-${index}`}
+                                  className={`timeline-step ${isCurrent ? "current" : ""} ${
+                                    isComplete ? "complete" : ""
+                                  }`}
+                                  title={getPlaybackStepLabel(event.action)}
+                                  aria-label={`Step ${index + 1}: ${getPlaybackStepLabel(event.action)}`}
+                                >
+                                  <span className="timeline-dot" />
+                                  {index < recordingItem.events.length - 1 ? (
+                                    <span className="timeline-line" />
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
                       <button
                         className="danger"
                         onClick={() =>
