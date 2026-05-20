@@ -767,7 +767,7 @@ export default function SwarmApplication({
     stopReplaySchedule();
     setPlayingRecordingId(recordingId);
     setRecordingStatus("Playing saved behaviour");
-    setPlaybackProgress({ recordingId, activeIndex: -1 });
+    setPlaybackProgress({ recordingId, activeIndex: -1, activeDuration: 0 });
     let playbackOffset = 0;
     events.forEach((entry, index) => {
       scheduleReplay(() => {
