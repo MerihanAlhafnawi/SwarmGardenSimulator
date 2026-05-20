@@ -215,7 +215,8 @@ export default function SwarmApplication({
   const [showPromptNextButton, setShowPromptNextButton] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
-  const timersRef = useRef<number[]>([]);
+  const animationTimersRef = useRef<number[]>([]);
+  const replayTimersRef = useRef<number[]>([]);
   const recordingStartRef = useRef<number>(0);
 
   const isFirebaseReady = Boolean(getFirebaseDb());
@@ -335,15 +336,27 @@ export default function SwarmApplication({
     tourOpen && activeTourStep.targetId === targetId ? "tour-target-active" : "";
 
   const stopFlow = () => {
-    for (const timer of timersRef.current) {
+    for (const timer of animationTimersRef.current) {
       window.clearTimeout(timer);
     }
-    timersRef.current = [];
+    animationTimersRef.current = [];
   };
 
-  const schedule = (callback: () => void, delay: number) => {
+  const scheduleAnimation = (callback: () => void, delay: number) => {
     const timer = window.setTimeout(callback, delay);
-    timersRef.current.push(timer);
+    animationTimersRef.current.push(timer);
+  };
+
+  const stopReplaySchedule = () => {
+    for (const timer of replayTimersRef.current) {
+      window.clearTimeout(timer);
+    }
+    replayTimersRef.current = [];
+  };
+
+  const scheduleReplay = (callback: () => void, delay: number) => {
+    const timer = window.setTimeout(callback, delay);
+    replayTimersRef.current.push(timer);
   };
 
   const captureState = (action: string, data: Record<string, unknown> = {}) => {
@@ -391,7 +404,7 @@ export default function SwarmApplication({
     const targetRgb = hexToRgb(targetColor);
 
     for (let step = 0; step <= STEPS; step += 1) {
-      schedule(() => {
+      scheduleAnimation(() => {
         const t = step / STEPS;
         const color = rgbToHex(interpolateRgb(startRgb, targetRgb, t));
         updateCells((draft) => {
@@ -471,7 +484,7 @@ export default function SwarmApplication({
   const startLedFlow = (direction: string, color = currentColor) => {
     stopFlow();
     getFlowOrder(direction).forEach(([row, col], index) => {
-      schedule(() => fadeCell(row, col, color), index * HOP_DELAY);
+      scheduleAnimation(() => fadeCell(row, col, color), index * HOP_DELAY);
     });
   };
 
@@ -509,7 +522,7 @@ export default function SwarmApplication({
   const animateBuckleCell = (row: number, col: number, startLevel: number, endLevel: number) => {
     const totalSteps = Math.floor(BUCKLE_DURATION / BUCKLE_STEP_DELAY);
     for (let step = 0; step <= totalSteps; step += 1) {
-      schedule(() => {
+      scheduleAnimation(() => {
         const progress = step / totalSteps;
         const level = Math.round(startLevel + (endLevel - startLevel) * progress);
         updateCells((draft) => {
@@ -522,12 +535,13 @@ export default function SwarmApplication({
   const startBuckleFlow = (direction: string) => {
     stopFlow();
     getFlowOrder(direction).forEach(([row, col], index) => {
-      schedule(() => animateBuckleCell(row, col, DEFAULT_LEVEL, 1), index * START_OFFSET);
+      scheduleAnimation(() => animateBuckleCell(row, col, DEFAULT_LEVEL, 1), index * START_OFFSET);
     });
   };
 
   const resetSwarm = () => {
     stopFlow();
+    stopReplaySchedule();
     setSelected(new Set());
     setBuckleValue(DEFAULT_LEVEL);
     setRecordData([]);
@@ -708,16 +722,17 @@ export default function SwarmApplication({
   const playbackRecording = (recordingId: string, events: RecordingEvent[]) => {
     resetSwarm();
     stopFlow();
+    stopReplaySchedule();
     setPlayingRecordingId(recordingId);
     setRecordingStatus("Playing saved behaviour");
     setPlaybackProgress({ recordingId, activeIndex: -1 });
     events.forEach((entry, index) => {
-      schedule(() => {
+      scheduleReplay(() => {
         setPlaybackProgress({ recordingId, activeIndex: index });
         runPlaybackAction(entry);
       }, index * REPLAY_STEP_DELAY);
     });
-    schedule(() => {
+    scheduleReplay(() => {
       setPlayingRecordingId(null);
       setPlaybackProgress(null);
       setRecordingStatus(DEFAULT_STATUS_MESSAGE);
