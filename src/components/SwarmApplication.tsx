@@ -62,6 +62,8 @@ type PlaybackProgress = {
   activeIndex: number;
 };
 
+type BuckleTargetMode = "auto" | "all" | "selected";
+
 type PlaybackCellsInput = Array<string | [number, number]>;
 type TourStep = {
   title: string;
@@ -204,6 +206,7 @@ export default function SwarmApplication({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
   const [buckleValue, setBuckleValue] = useState(DEFAULT_LEVEL);
+  const [buckleTargetMode, setBuckleTargetMode] = useState<BuckleTargetMode>("auto");
   const [recording, setRecording] = useState(true);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [recordData, setRecordData] = useState<RecordingEvent[]>([]);
@@ -494,22 +497,27 @@ export default function SwarmApplication({
     level,
     playback = false,
     playbackCells,
+    targetMode = "auto",
   }: {
     level: number;
     playback?: boolean;
     playbackCells?: PlaybackCellsInput;
+    targetMode?: BuckleTargetMode;
   }) => {
     setBuckleValue(level);
     const normalizedPlaybackCells = playbackCells ? normalizePlaybackCells(playbackCells) : null;
     const playbackSet = normalizedPlaybackCells
       ? new Set(normalizedPlaybackCells.map(([row, col]) => cellKey(row, col)))
       : null;
+    const useSelectedOnly =
+      !playback &&
+      (targetMode === "selected" || (targetMode === "auto" && selected.size > 0));
 
     updateCells((draft) => {
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = 0; col < COLS; col += 1) {
           const key = cellKey(row, col);
-          if (!playback && selected.size > 0 && !selected.has(key)) {
+          if (useSelectedOnly && !selected.has(key)) {
             continue;
           }
           if (playbackSet && !playbackSet.has(key)) {
@@ -519,6 +527,18 @@ export default function SwarmApplication({
         }
       }
     });
+  };
+
+  const commitBuckleChange = (level: number) => {
+    const selectedCells = [...selected];
+    const shouldUseSelected =
+      buckleTargetMode === "selected" || (buckleTargetMode === "auto" && selected.size > 0);
+
+    if (shouldUseSelected) {
+      captureState("buckle_selected", { val: String(level), selected: selectedCells });
+    } else {
+      captureState("buckle_all", { val: String(level) });
+    }
   };
 
   const animateBuckleCell = (row: number, col: number, startLevel: number, endLevel: number) => {
@@ -951,15 +971,49 @@ export default function SwarmApplication({
               value={buckleValue}
               onChange={(event) => {
                 const level = Number(event.target.value);
-                const selectedCells = [...selected];
-                if (selected.size > 0) {
-                  captureState("buckle_selected", { val: String(level), selected: selectedCells });
-                } else {
-                  captureState("buckle_all", { val: String(level) });
+                setBuckleLevel({ level, targetMode: buckleTargetMode });
+              }}
+              onMouseUp={(event) => {
+                commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
+              }}
+              onTouchEnd={(event) => {
+                commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
+              }}
+              onKeyUp={(event) => {
+                if (
+                  event.key === "ArrowLeft" ||
+                  event.key === "ArrowRight" ||
+                  event.key === "ArrowUp" ||
+                  event.key === "ArrowDown" ||
+                  event.key === "Home" ||
+                  event.key === "End" ||
+                  event.key === "PageUp" ||
+                  event.key === "PageDown"
+                ) {
+                  commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
                 }
-                setBuckleLevel({ level });
               }}
             />
+            <div className="mini-toggle-group" aria-label="Buckle target mode">
+              <button
+                type="button"
+                className={`mini-toggle ${buckleTargetMode === "all" ? "active" : ""}`}
+                onClick={() =>
+                  setBuckleTargetMode((current) => (current === "all" ? "auto" : "all"))
+                }
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`mini-toggle ${buckleTargetMode === "selected" ? "active" : ""}`}
+                onClick={() =>
+                  setBuckleTargetMode((current) => (current === "selected" ? "auto" : "selected"))
+                }
+              >
+                Selected
+              </button>
+            </div>
             <output>{buckleValue}</output>
           </label>
           <button

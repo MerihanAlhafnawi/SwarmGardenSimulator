@@ -380,6 +380,23 @@ button:disabled {
   width: 240px;
 }
 
+.mini-toggle-group {
+  display: inline-flex;
+  gap: 6px;
+}
+
+button.mini-toggle {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.9rem;
+  border-radius: 12px;
+}
+
+button.mini-toggle.active {
+  background: rgba(209, 75, 42, 0.16);
+  border-color: rgba(209, 75, 42, 0.45);
+}
+
 .swarm-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(80px, 1fr));
