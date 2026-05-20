@@ -189,10 +189,10 @@ const getPlaybackStepLabel = (action: string) => {
 
 const getBuckleStatusMessage = (selectedCount: number) => {
   if (selectedCount > 0) {
-    return `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"} only.`;
+    return `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"} only. Saving happens when you let go of the slider.`;
   }
 
-  return "Buckling all robots. To buckle selected robots only, select them first.";
+  return "Buckling all robots. To buckle selected robots only, select them first. Saving happens when you let go of the slider.";
 };
 
 export default function SwarmApplication({
@@ -968,7 +968,7 @@ export default function SwarmApplication({
         </div>
 
         <div className={`toolbar ${getTourClass("buckle-controls")}`} data-tour-id="buckle-controls">
-          <label className="slider-group">
+          <label className="slider-group slider-group-subtle">
             <span>Buckle Level</span>
             <input
               type="range"
@@ -1010,7 +1010,7 @@ export default function SwarmApplication({
               startBuckleFlow("left_to_right");
             }}
           >
-            Buckle L→R
+            Buckle Left→Right
           </button>
           <button
             onClick={() => {
@@ -1018,7 +1018,7 @@ export default function SwarmApplication({
               startBuckleFlow("right_to_left");
             }}
           >
-            Buckle R→L
+            Buckle Right→Left
           </button>
           <button
             onClick={() => {
