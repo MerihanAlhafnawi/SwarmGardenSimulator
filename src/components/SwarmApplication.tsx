@@ -28,6 +28,8 @@ const START_OFFSET = 1000;
 const BUCKLE_DURATION = 10000;
 const BUCKLE_STEP_DELAY = 100;
 const REPLAY_STEP_DELAY = 2000;
+const COLOR_FLOW_DURATION = ROWS * COLS * HOP_DELAY + STEPS * STEP_DELAY;
+const BUCKLE_FLOW_DURATION = ROWS * COLS * START_OFFSET + BUCKLE_DURATION;
 const DEFAULT_STATUS_MESSAGE =
   'Press "Save" when you are done, or Reset to start over, then scroll down to revise saved behaviours.';
 const SAVED_TRANSITION_MESSAGE =
@@ -719,6 +721,23 @@ export default function SwarmApplication({
     }
   };
 
+  const getReplayActionDuration = (entry: RecordingEvent) => {
+    switch (entry.action) {
+      case "color_flow":
+        return COLOR_FLOW_DURATION;
+      case "buckle_flow":
+        return BUCKLE_FLOW_DURATION;
+      case "color_all":
+      case "color_selected":
+        return STEPS * STEP_DELAY;
+      case "buckle_all":
+      case "buckle_selected":
+        return 300;
+      default:
+        return 500;
+    }
+  };
+
   const playbackRecording = (recordingId: string, events: RecordingEvent[]) => {
     resetSwarm();
     stopFlow();
@@ -726,17 +745,19 @@ export default function SwarmApplication({
     setPlayingRecordingId(recordingId);
     setRecordingStatus("Playing saved behaviour");
     setPlaybackProgress({ recordingId, activeIndex: -1 });
+    let playbackOffset = 0;
     events.forEach((entry, index) => {
       scheduleReplay(() => {
         setPlaybackProgress({ recordingId, activeIndex: index });
         runPlaybackAction(entry);
-      }, index * REPLAY_STEP_DELAY);
+      }, playbackOffset);
+      playbackOffset += getReplayActionDuration(entry) + REPLAY_STEP_DELAY;
     });
     scheduleReplay(() => {
       setPlayingRecordingId(null);
       setPlaybackProgress(null);
       setRecordingStatus(DEFAULT_STATUS_MESSAGE);
-    }, Math.max(events.length - 1, 0) * REPLAY_STEP_DELAY + 600);
+    }, Math.max(playbackOffset, 0) + 600);
   };
 
   const deleteRecording = async (recordingId: string) => {
