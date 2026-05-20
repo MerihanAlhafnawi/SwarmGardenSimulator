@@ -24,8 +24,8 @@ const DEFAULT_LEVEL = 11;
 const STEPS = 15;
 const STEP_DELAY = 50;
 const HOP_DELAY = 120;
-const START_OFFSET = 1000;
-const BUCKLE_DURATION = 10000;
+const START_OFFSET = 120;
+const BUCKLE_DURATION = 2000;
 const BUCKLE_STEP_DELAY = 100;
 const REPLAY_STEP_DELAY = 2000;
 const COLOR_FLOW_DURATION = ROWS * COLS * HOP_DELAY + STEPS * STEP_DELAY;
@@ -187,6 +187,30 @@ const getPlaybackStepLabel = (action: string) => {
   }
 };
 
+const getBuckleStatusMessage = ({
+  buckleTargetMode,
+  selectedCount,
+}: {
+  buckleTargetMode: BuckleTargetMode;
+  selectedCount: number;
+}) => {
+  if (buckleTargetMode === "all") {
+    return "Buckling all robots.";
+  }
+
+  if (buckleTargetMode === "selected") {
+    return selectedCount > 0
+      ? `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"}.`
+      : "Select one or more robots to buckle specific robots only.";
+  }
+
+  if (selectedCount > 0) {
+    return `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"}.`;
+  }
+
+  return "Buckling all robots.";
+};
+
 export default function SwarmApplication({
   forceTour = false,
   mode = "design",
@@ -228,6 +252,10 @@ export default function SwarmApplication({
   const activeTourStep = TOUR_STEPS[tourStepIndex];
   const progressStep =
     mode === "prompt" ? (promptSlot === "provided-description-1" ? 4 : 5) : 6;
+  const buckleStatusMessage = getBuckleStatusMessage({
+    buckleTargetMode,
+    selectedCount: selected.size,
+  });
 
   useEffect(() => {
     setSaveState(
@@ -1015,6 +1043,7 @@ export default function SwarmApplication({
               </button>
             </div>
             <output>{buckleValue}</output>
+            <p className="control-hint">{buckleStatusMessage}</p>
           </label>
           <button
             onClick={() => {
