@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { FirestoreError } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import StudyStepProgress from "@/components/StudyStepProgress";
@@ -60,9 +61,8 @@ type SavedRecording = {
 type PlaybackProgress = {
   recordingId: string;
   activeIndex: number;
+  activeDuration: number;
 };
-
-type BuckleTargetMode = "auto" | "all" | "selected";
 
 type PlaybackCellsInput = Array<string | [number, number]>;
 type TourStep = {
@@ -187,28 +187,12 @@ const getPlaybackStepLabel = (action: string) => {
   }
 };
 
-const getBuckleStatusMessage = ({
-  buckleTargetMode,
-  selectedCount,
-}: {
-  buckleTargetMode: BuckleTargetMode;
-  selectedCount: number;
-}) => {
-  if (buckleTargetMode === "all") {
-    return "Buckling all robots.";
-  }
-
-  if (buckleTargetMode === "selected") {
-    return selectedCount > 0
-      ? `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"}.`
-      : "Select one or more robots to buckle specific robots only.";
-  }
-
+const getBuckleStatusMessage = (selectedCount: number) => {
   if (selectedCount > 0) {
-    return `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"}.`;
+    return `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"} only.`;
   }
 
-  return "Buckling all robots.";
+  return "Buckling all robots. To buckle selected robots only, select them first.";
 };
 
 export default function SwarmApplication({
@@ -230,7 +214,6 @@ export default function SwarmApplication({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentColor, setCurrentColor] = useState(DEFAULT_COLOR);
   const [buckleValue, setBuckleValue] = useState(DEFAULT_LEVEL);
-  const [buckleTargetMode, setBuckleTargetMode] = useState<BuckleTargetMode>("auto");
   const [recording, setRecording] = useState(true);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [recordData, setRecordData] = useState<RecordingEvent[]>([]);
@@ -252,10 +235,7 @@ export default function SwarmApplication({
   const activeTourStep = TOUR_STEPS[tourStepIndex];
   const progressStep =
     mode === "prompt" ? (promptSlot === "provided-description-1" ? 4 : 5) : 6;
-  const buckleStatusMessage = getBuckleStatusMessage({
-    buckleTargetMode,
-    selectedCount: selected.size,
-  });
+  const buckleStatusMessage = getBuckleStatusMessage(selected.size);
 
   useEffect(() => {
     setSaveState(
@@ -525,21 +505,17 @@ export default function SwarmApplication({
     level,
     playback = false,
     playbackCells,
-    targetMode = "auto",
   }: {
     level: number;
     playback?: boolean;
     playbackCells?: PlaybackCellsInput;
-    targetMode?: BuckleTargetMode;
   }) => {
     setBuckleValue(level);
     const normalizedPlaybackCells = playbackCells ? normalizePlaybackCells(playbackCells) : null;
     const playbackSet = normalizedPlaybackCells
       ? new Set(normalizedPlaybackCells.map(([row, col]) => cellKey(row, col)))
       : null;
-    const useSelectedOnly =
-      !playback &&
-      (targetMode === "selected" || (targetMode === "auto" && selected.size > 0));
+    const useSelectedOnly = !playback && selected.size > 0;
 
     updateCells((draft) => {
       for (let row = 0; row < ROWS; row += 1) {
@@ -559,8 +535,7 @@ export default function SwarmApplication({
 
   const commitBuckleChange = (level: number) => {
     const selectedCells = [...selected];
-    const shouldUseSelected =
-      buckleTargetMode === "selected" || (buckleTargetMode === "auto" && selected.size > 0);
+    const shouldUseSelected = selected.size > 0;
 
     if (shouldUseSelected) {
       captureState("buckle_selected", { val: String(level), selected: selectedCells });
@@ -796,7 +771,11 @@ export default function SwarmApplication({
     let playbackOffset = 0;
     events.forEach((entry, index) => {
       scheduleReplay(() => {
-        setPlaybackProgress({ recordingId, activeIndex: index });
+        setPlaybackProgress({
+          recordingId,
+          activeIndex: index,
+          activeDuration: getReplayActionDuration(entry),
+        });
         runPlaybackAction(entry);
       }, playbackOffset);
       playbackOffset += getReplayActionDuration(entry) + REPLAY_STEP_DELAY;
@@ -999,7 +978,7 @@ export default function SwarmApplication({
               value={buckleValue}
               onChange={(event) => {
                 const level = Number(event.target.value);
-                setBuckleLevel({ level, targetMode: buckleTargetMode });
+                setBuckleLevel({ level });
               }}
               onMouseUp={(event) => {
                 commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
@@ -1022,26 +1001,6 @@ export default function SwarmApplication({
                 }
               }}
             />
-            <div className="mini-toggle-group" aria-label="Buckle target mode">
-              <button
-                type="button"
-                className={`mini-toggle ${buckleTargetMode === "all" ? "active" : ""}`}
-                onClick={() =>
-                  setBuckleTargetMode((current) => (current === "all" ? "auto" : "all"))
-                }
-              >
-                All
-              </button>
-              <button
-                type="button"
-                className={`mini-toggle ${buckleTargetMode === "selected" ? "active" : ""}`}
-                onClick={() =>
-                  setBuckleTargetMode((current) => (current === "selected" ? "auto" : "selected"))
-                }
-              >
-                Selected
-              </button>
-            </div>
             <output>{buckleValue}</output>
             <p className="control-hint">{buckleStatusMessage}</p>
           </label>
@@ -1189,6 +1148,13 @@ export default function SwarmApplication({
                               className={`timeline-step ${isCurrent ? "current" : ""} ${
                                 isComplete ? "complete" : ""
                               }`}
+                              style={
+                                isCurrent
+                                  ? ({
+                                      ["--timeline-duration" as string]: `${playbackProgress?.activeDuration ?? 0}ms`,
+                                    } as CSSProperties)
+                                  : undefined
+                              }
                               title={getPlaybackStepLabel(event.action)}
                               aria-label={`Step ${index + 1}: ${getPlaybackStepLabel(event.action)}`}
                             >

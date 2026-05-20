@@ -381,23 +381,6 @@ button:disabled {
   width: 240px;
 }
 
-.mini-toggle-group {
-  display: inline-flex;
-  gap: 6px;
-}
-
-button.mini-toggle {
-  min-height: 34px;
-  padding: 0 12px;
-  font-size: 0.9rem;
-  border-radius: 12px;
-}
-
-button.mini-toggle.active {
-  background: rgba(209, 75, 42, 0.16);
-  border-color: rgba(209, 75, 42, 0.45);
-}
-
 .control-hint {
   flex-basis: 100%;
   margin: 2px 0 0;
@@ -581,7 +564,8 @@ button.mini-toggle.active {
   min-width: 28px;
   background: rgba(116, 83, 54, 0.18);
   border-radius: 999px;
-  transition: background 140ms ease;
+  overflow: hidden;
+  position: relative;
 }
 
 .timeline-step.complete .timeline-dot,
@@ -594,9 +578,32 @@ button.mini-toggle.active {
   transform: scale(1.15);
 }
 
-.timeline-step.complete .timeline-line,
-.timeline-step.current .timeline-line {
+.timeline-line::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
   background: rgba(209, 75, 42, 0.5);
+}
+
+.timeline-step.complete .timeline-line::after {
+  width: 100%;
+}
+
+.timeline-step.current .timeline-line::after {
+  animation: timeline-progress var(--timeline-duration, 500ms) linear forwards;
+}
+
+@keyframes timeline-progress {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
 }
 
 .tour-overlay {
