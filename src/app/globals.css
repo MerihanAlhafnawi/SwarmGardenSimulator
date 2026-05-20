@@ -382,9 +382,16 @@ button:disabled {
 }
 
 .slider-group-subtle {
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 0;
   border-color: rgba(116, 83, 54, 0.1);
   background: rgba(255, 255, 255, 0.42);
   box-shadow: none;
+}
+
+.slider-group-subtle input {
+  width: 180px;
 }
 
 .control-hint {

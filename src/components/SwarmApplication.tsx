@@ -947,7 +947,7 @@ export default function SwarmApplication({
               startLedFlow("left_to_right");
             }}
           >
-            Color L→R
+            Color Left→Right
           </button>
           <button
             onClick={() => {
@@ -955,7 +955,7 @@ export default function SwarmApplication({
               startLedFlow("right_to_left");
             }}
           >
-            Color R→L
+            Color Right→Left
           </button>
           <button
             onClick={() => {
