@@ -1028,9 +1028,6 @@ export default function SwarmApplication({
           >
             Buckle Center → Out
           </button>
-          <button className="ghost" onClick={stopFlow}>
-            Stop Flow
-          </button>
         </div>
 
         <div className={`toolbar ${getTourClass("record-controls")}`} data-tour-id="record-controls">

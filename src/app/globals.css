@@ -383,7 +383,7 @@ button:disabled {
 
 .slider-group-subtle {
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   min-height: 0;
   border-color: rgba(116, 83, 54, 0.1);
   background: rgba(255, 255, 255, 0.42);
@@ -391,15 +391,15 @@ button:disabled {
 }
 
 .slider-group-subtle input {
-  width: 180px;
+  width: 240px;
 }
 
 .control-hint {
   flex-basis: 100%;
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 0.92rem;
-  line-height: 1.35;
+  font-size: 0.88rem;
+  line-height: 1.2;
 }
 
 .swarm-grid {
