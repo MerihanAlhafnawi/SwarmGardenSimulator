@@ -132,7 +132,7 @@ export default function SurveyPage() {
           </div>
 
           <label className="field field-wide">
-            <span>Was there any aspects of the simulation that was hard and/or confusing?</span>
+            <span>Was there any aspects of the Swarm Garden Simulator that was hard and/or confusing?</span>
             <textarea
               value={confusingAspects}
               onChange={(event) => setConfusingAspects(event.target.value)}
@@ -142,7 +142,7 @@ export default function SurveyPage() {
           </label>
 
           <label className="field field-wide">
-            <span>Please provide any feedback you have on the simulation.</span>
+            <span>Please provide any feedback you have on the Swarm Garden Simulator.</span>
             <textarea
               value={feedback}
               onChange={(event) => setFeedback(event.target.value)}
@@ -154,7 +154,11 @@ export default function SurveyPage() {
           <div className="behaviour-actions">
             <button onClick={() => void handleSubmit()}>Submit survey</button>
             {message ? <p className="behaviour-message">{message}</p> : null}
-            {submitted ? <p className="survey-success">Thank you. Your survey has been submitted.</p> : null}
+            {submitted ? (
+              <p className="survey-success">
+                Thank you for participating in our user study. Your responses have been saved.
+              </p>
+            ) : null}
           </div>
         </section>
       </section>
