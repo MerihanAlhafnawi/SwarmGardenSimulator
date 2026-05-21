@@ -382,11 +382,6 @@ button:disabled {
   width: 240px;
 }
 
-.buckle-control-group {
-  display: grid;
-  gap: 4px;
-}
-
 .slider-group-subtle {
   gap: 8px;
   padding: 4px 8px;
@@ -407,6 +402,10 @@ button:disabled {
   font-size: 0.88rem;
   line-height: 1.2;
   max-width: 300px;
+}
+
+.buckle-hint {
+  margin-top: 6px;
 }
 
 .swarm-grid {

@@ -222,7 +222,7 @@ export default function SwarmApplication({
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress | null>(null);
-  const [replayPauseSeconds, setReplayPauseSeconds] = useState("2");
+  const [replayPauseSecondsById, setReplayPauseSecondsById] = useState<Record<string, string>>({});
   const [transitionMessage, setTransitionMessage] = useState("");
   const [showPromptNextButton, setShowPromptNextButton] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -761,8 +761,8 @@ export default function SwarmApplication({
     }
   };
 
-  const getReplayPauseMs = () => {
-    const parsed = Number(replayPauseSeconds);
+  const getReplayPauseMs = (recordingId: string) => {
+    const parsed = Number(replayPauseSecondsById[recordingId] ?? "2");
     if (!Number.isFinite(parsed)) {
       return REPLAY_STEP_DELAY;
     }
@@ -771,7 +771,7 @@ export default function SwarmApplication({
   };
 
   const playbackRecording = (recordingId: string, events: RecordingEvent[]) => {
-    const replayPauseMs = getReplayPauseMs();
+    const replayPauseMs = getReplayPauseMs(recordingId);
     resetSwarm();
     stopFlow();
     stopReplaySchedule();
@@ -958,44 +958,41 @@ export default function SwarmApplication({
         </div>
 
         <div className={`toolbar ${getTourClass("buckle-controls")}`} data-tour-id="buckle-controls">
-          <div className="buckle-control-group">
-            <label className="slider-group slider-group-subtle">
-              <span>Buckle Level</span>
-              <input
-                type="range"
-                min="1"
-                max="11"
-                step="1"
-                value={buckleValue}
-                onChange={(event) => {
-                  const level = Number(event.target.value);
-                  setBuckleLevel({ level });
-                }}
-                onMouseUp={(event) => {
+          <label className="slider-group slider-group-subtle">
+            <span>Buckle Level</span>
+            <input
+              type="range"
+              min="1"
+              max="11"
+              step="1"
+              value={buckleValue}
+              onChange={(event) => {
+                const level = Number(event.target.value);
+                setBuckleLevel({ level });
+              }}
+              onMouseUp={(event) => {
+                commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
+              }}
+              onTouchEnd={(event) => {
+                commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
+              }}
+              onKeyUp={(event) => {
+                if (
+                  event.key === "ArrowLeft" ||
+                  event.key === "ArrowRight" ||
+                  event.key === "ArrowUp" ||
+                  event.key === "ArrowDown" ||
+                  event.key === "Home" ||
+                  event.key === "End" ||
+                  event.key === "PageUp" ||
+                  event.key === "PageDown"
+                ) {
                   commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
-                }}
-                onTouchEnd={(event) => {
-                  commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
-                }}
-                onKeyUp={(event) => {
-                  if (
-                    event.key === "ArrowLeft" ||
-                    event.key === "ArrowRight" ||
-                    event.key === "ArrowUp" ||
-                    event.key === "ArrowDown" ||
-                    event.key === "Home" ||
-                    event.key === "End" ||
-                    event.key === "PageUp" ||
-                    event.key === "PageDown"
-                  ) {
-                    commitBuckleChange(Number((event.currentTarget as HTMLInputElement).value));
-                  }
-                }}
-              />
-              <output>{buckleValue}</output>
-            </label>
-            <p className="control-hint">{buckleStatusMessage}</p>
-          </div>
+                }
+              }}
+            />
+            <output>{buckleValue}</output>
+          </label>
           <button
             onClick={() => {
               captureState("buckle_flow", { direction: "left_to_right" });
@@ -1021,6 +1018,7 @@ export default function SwarmApplication({
             Buckle Center → Out
           </button>
         </div>
+        <p className="control-hint buckle-hint">{buckleStatusMessage}</p>
 
         <div className={`toolbar ${getTourClass("record-controls")}`} data-tour-id="record-controls">
           <button className="record" onClick={() => void saveRecording()}>
@@ -1126,8 +1124,13 @@ export default function SwarmApplication({
                               type="number"
                               min="0"
                               step="0.5"
-                              value={replayPauseSeconds}
-                              onChange={(event) => setReplayPauseSeconds(event.target.value)}
+                              value={replayPauseSecondsById[recordingItem.id] ?? "2"}
+                              onChange={(event) =>
+                                setReplayPauseSecondsById((current) => ({
+                                  ...current,
+                                  [recordingItem.id]: event.target.value,
+                                }))
+                              }
                             />
                             <span>s</span>
                           </label>
