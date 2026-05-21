@@ -222,7 +222,7 @@ export default function SwarmApplication({
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress | null>(null);
-  const [replayPauseSecondsById, setReplayPauseSecondsById] = useState<Record<string, string>>({});
+  const [replayPauseSecondsById, setReplayPauseSecondsById] = useState<Record<string, string[]>>({});
   const [transitionMessage, setTransitionMessage] = useState("");
   const [showPromptNextButton, setShowPromptNextButton] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -761,8 +761,8 @@ export default function SwarmApplication({
     }
   };
 
-  const getReplayPauseMs = (recordingId: string) => {
-    const parsed = Number(replayPauseSecondsById[recordingId] ?? "2");
+  const getReplayPauseMs = (recordingId: string, stepIndex: number) => {
+    const parsed = Number(replayPauseSecondsById[recordingId]?.[stepIndex] ?? "2");
     if (!Number.isFinite(parsed)) {
       return REPLAY_STEP_DELAY;
     }
@@ -771,7 +771,6 @@ export default function SwarmApplication({
   };
 
   const playbackRecording = (recordingId: string, events: RecordingEvent[]) => {
-    const replayPauseMs = getReplayPauseMs(recordingId);
     resetSwarm();
     stopFlow();
     stopReplaySchedule();
@@ -788,7 +787,7 @@ export default function SwarmApplication({
         });
         runPlaybackAction(entry);
       }, playbackOffset);
-      playbackOffset += getReplayActionDuration(entry) + replayPauseMs;
+      playbackOffset += getReplayActionDuration(entry) + getReplayPauseMs(recordingId, index);
     });
     scheduleReplay(() => {
       setPlayingRecordingId(null);
@@ -877,7 +876,7 @@ export default function SwarmApplication({
       <section className="controls-card">
         <div className="toolbar">
           <div className="study-header-row">
-            <StudyStepProgress currentStep={progressStep} totalSteps={7} />
+            {!tourOpen ? <StudyStepProgress currentStep={progressStep} totalSteps={7} /> : null}
           </div>
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
@@ -1031,7 +1030,7 @@ export default function SwarmApplication({
           >
             Reset
           </button>
-          {mode === "design" ? (
+          {mode === "design" && !tourOpen ? (
             <button
               className="ghost"
               onClick={() => {
@@ -1110,31 +1109,13 @@ export default function SwarmApplication({
                     <div className="playback-progress">
                       <div className="playback-progress-header">
                         <span>Replay progress</span>
-                        <div className="playback-progress-controls">
-                          <span>
-                            {playingRecordingId === recordingItem.id && playbackProgress
-                              ? playbackProgress.activeIndex >= 0
-                                ? `Step ${playbackProgress.activeIndex + 1} of ${recordingItem.events.length}`
-                                : "Starting replay"
-                              : `${recordingItem.events.length} steps`}
-                          </span>
-                          <label className="replay-delay-input">
-                            <span>Pause</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={replayPauseSecondsById[recordingItem.id] ?? "2"}
-                              onChange={(event) =>
-                                setReplayPauseSecondsById((current) => ({
-                                  ...current,
-                                  [recordingItem.id]: event.target.value,
-                                }))
-                              }
-                            />
-                            <span>s</span>
-                          </label>
-                        </div>
+                        <span>
+                          {playingRecordingId === recordingItem.id && playbackProgress
+                            ? playbackProgress.activeIndex >= 0
+                              ? `Step ${playbackProgress.activeIndex + 1} of ${recordingItem.events.length}`
+                              : "Starting replay"
+                            : `${recordingItem.events.length} steps`}
+                        </span>
                       </div>
                       <div className="playback-timeline" aria-label="Replay timeline">
                         {recordingItem.events.map((event, index) => {
@@ -1165,7 +1146,29 @@ export default function SwarmApplication({
                             >
                               <span className="timeline-dot" />
                               {index < recordingItem.events.length - 1 ? (
-                                <span className="timeline-line" />
+                                <span className="timeline-gap">
+                                  <label className="replay-delay-input replay-delay-inline">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.5"
+                                      value={replayPauseSecondsById[recordingItem.id]?.[index] ?? "2"}
+                                      onChange={(event) =>
+                                        setReplayPauseSecondsById((current) => {
+                                          const currentValues = [...(current[recordingItem.id] ?? [])];
+                                          currentValues[index] = event.target.value;
+                                          return {
+                                            ...current,
+                                            [recordingItem.id]: currentValues,
+                                          };
+                                        })
+                                      }
+                                      aria-label={`Pause after step ${index + 1} in seconds`}
+                                    />
+                                    <span>s</span>
+                                  </label>
+                                  <span className="timeline-line" />
+                                </span>
                               ) : null}
                             </div>
                           );

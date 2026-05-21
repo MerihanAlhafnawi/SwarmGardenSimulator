@@ -553,14 +553,6 @@ button:disabled {
   font-size: 0.92rem;
 }
 
-.playback-progress-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
 .replay-delay-input {
   display: inline-flex;
   align-items: center;
@@ -591,6 +583,25 @@ button:disabled {
   align-items: center;
   flex: 1 1 0;
   min-width: 24px;
+}
+
+.timeline-gap {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 56px;
+}
+
+.replay-delay-inline {
+  justify-self: center;
+  font-size: 0.82rem;
+}
+
+.replay-delay-inline input {
+  width: 54px;
+  padding: 4px 6px;
+  font-size: 0.84rem;
 }
 
 .timeline-dot {
