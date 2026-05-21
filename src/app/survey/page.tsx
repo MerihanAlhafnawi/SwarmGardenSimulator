@@ -154,14 +154,16 @@ export default function SurveyPage() {
           <div className="behaviour-actions">
             <button onClick={() => void handleSubmit()}>Submit survey</button>
             {message ? <p className="behaviour-message">{message}</p> : null}
-            {submitted ? (
-              <p className="survey-success">
-                Thank you for participating in our user study. Your responses have been saved.
-              </p>
-            ) : null}
           </div>
         </section>
       </section>
+      {submitted ? (
+        <div className="transition-overlay" aria-live="polite">
+          <div className="transition-card">
+            <p>Thank you for taking the survey. Your responses have been saved.</p>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
