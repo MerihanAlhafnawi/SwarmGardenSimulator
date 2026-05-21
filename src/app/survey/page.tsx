@@ -8,7 +8,6 @@ import {
   hasRequiredStudyContext,
   initializeStudyContextFromSearch,
   saveStudyStep,
-  storeStudyContext,
   type StudyContext,
 } from "@/lib/study";
 
@@ -27,6 +26,8 @@ const genderOptions = [
   "Other",
   "Prefer not to say",
 ] as const;
+
+const ageOptions = Array.from({ length: 83 }, (_, index) => String(index + 18));
 
 export default function SurveyPage() {
   const [studyContext, setStudyContext] = useState<StudyContext>(getStoredStudyContext);
@@ -48,18 +49,13 @@ export default function SurveyPage() {
       return;
     }
 
-    if (!familiarity || !age.trim() || !gender) {
-      setMessage("Please complete the required survey questions.");
-      return;
-    }
-
     try {
       await saveStudyStep({
         studyContext,
         step: "post-study-survey",
         data: {
           familiarity,
-          age: age.trim(),
+          age,
           gender,
           confusingAspects: confusingAspects.trim(),
           feedback: feedback.trim(),
@@ -84,26 +80,6 @@ export default function SurveyPage() {
 
         <section className="controls-card survey-card">
           <div className="study-header-row">
-            {studyContext.source === "prolific" ? (
-              <p className="study-source-badge">Prolific participant ID connected</p>
-            ) : (
-              <label className="field participant-field">
-                <span>Participant ID</span>
-                <input
-                  value={studyContext.manualParticipantId}
-                  onChange={(event) => {
-                    const nextContext: StudyContext = {
-                      ...studyContext,
-                      source: "manual",
-                      manualParticipantId: event.target.value,
-                    };
-                    setStudyContext(nextContext);
-                    storeStudyContext(nextContext);
-                  }}
-                  placeholder="Type here"
-                />
-              </label>
-            )}
             <StudyStepProgress currentStep={7} totalSteps={7} />
           </div>
 
@@ -127,7 +103,14 @@ export default function SurveyPage() {
 
           <label className="field">
             <span>Please provide your age.</span>
-            <input value={age} onChange={(event) => setAge(event.target.value)} placeholder="Type here" />
+            <select value={age} onChange={(event) => setAge(event.target.value)}>
+              <option value="">Select age</option>
+              {ageOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
 
           <div className="survey-question">

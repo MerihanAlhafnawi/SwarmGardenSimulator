@@ -14,7 +14,6 @@ import {
   hasRequiredStudyContext,
   initializeStudyContextFromSearch,
   saveBehaviourRecording,
-  storeStudyContext,
   type StudyContext,
 } from "@/lib/study";
 
@@ -189,10 +188,10 @@ const getPlaybackStepLabel = (action: string) => {
 
 const getBuckleStatusMessage = (selectedCount: number) => {
   if (selectedCount > 0) {
-    return `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"} only. Saving happens when you let go of the slider.`;
+    return `Buckling ${selectedCount} selected robot${selectedCount === 1 ? "" : "s"} only. Saved when you let go.`;
   }
 
-  return "Buckling all robots. To buckle selected robots only, select them first. Saving happens when you let go of the slider.";
+  return "Buckling all robots. Select robots to buckle only those. Saved when you let go.";
 };
 
 export default function SwarmApplication({
@@ -854,7 +853,7 @@ export default function SwarmApplication({
           <h1>
             {mode === "prompt"
               ? "Please implement a behaviour that fits this description"
-              : "Please implement 2 or more new behaviours of your own and describe them"}
+              : 'Please implement 2 behaviours. All behaviours implemented will show in "Current behaviours".'}
           </h1>
           {mode === "design" ? (
             <button className="ghost" onClick={startTour}>
@@ -867,26 +866,6 @@ export default function SwarmApplication({
       <section className="controls-card">
         <div className="toolbar">
           <div className="study-header-row">
-            {studyContext.source === "prolific" ? (
-              <div className="study-source-badge">Prolific participant ID connected</div>
-            ) : (
-              <label className="field participant-field">
-                <span>Participant ID</span>
-                <input
-                  value={studyContext.manualParticipantId}
-                  onChange={(event) => {
-                    const nextContext: StudyContext = {
-                      ...studyContext,
-                      source: "manual",
-                      manualParticipantId: event.target.value,
-                    };
-                    setStudyContext(nextContext);
-                    storeStudyContext(nextContext);
-                  }}
-                  placeholder="Type here"
-                />
-              </label>
-            )}
             <StudyStepProgress currentStep={progressStep} totalSteps={7} />
           </div>
           {mode === "prompt" ? (

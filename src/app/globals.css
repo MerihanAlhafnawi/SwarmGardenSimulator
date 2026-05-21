@@ -338,7 +338,8 @@ button:disabled {
 }
 
 .field input,
-.field textarea {
+.field textarea,
+.field select {
   padding: 16px 18px;
   font-size: 1rem;
 }
@@ -383,15 +384,16 @@ button:disabled {
 
 .slider-group-subtle {
   gap: 8px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   min-height: 0;
+  max-width: 300px;
   border-color: rgba(116, 83, 54, 0.1);
   background: rgba(255, 255, 255, 0.42);
   box-shadow: none;
 }
 
 .slider-group-subtle input {
-  width: 240px;
+  width: 210px;
 }
 
 .control-hint {
