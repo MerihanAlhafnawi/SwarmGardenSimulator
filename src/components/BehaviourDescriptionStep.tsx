@@ -9,7 +9,6 @@ import {
   hasRequiredStudyContext,
   initializeStudyContextFromSearch,
   saveStudyStep,
-  storeStudyContext,
   type StudyContext,
 } from "@/lib/study";
 
@@ -311,7 +310,7 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     }
 
     if (!hasRequiredStudyContext(studyContext)) {
-      setMessage("Please enter a participant ID to continue");
+      setMessage("Study session missing. Please restart the study.");
       return;
     }
 
@@ -359,28 +358,6 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
 
       <section className="controls-card behaviour-card">
         <div className="study-header-row">
-          {studyContext.source === "prolific" ? (
-            <p className="study-source-badge">Prolific participant ID connected</p>
-          ) : (
-            <label className="field participant-field">
-              <span>Participant ID</span>
-              <input
-                value={studyContext.manualParticipantId}
-                onChange={(event) => {
-                  const nextContext: StudyContext = {
-                    ...studyContext,
-                    source: "manual",
-                    manualParticipantId: event.target.value,
-                    manualSessionStamp:
-                      event.target.value === studyContext.manualParticipantId ? studyContext.manualSessionStamp : "",
-                  };
-                  setStudyContext(nextContext);
-                  storeStudyContext(nextContext);
-                }}
-                placeholder="Type here"
-              />
-            </label>
-          )}
           <div className="study-progress" aria-label="Behaviour timeline">
             <span className="study-progress-caption">Behaviour progress</span>
             <div className="behaviour-progress-bar" aria-hidden="true">

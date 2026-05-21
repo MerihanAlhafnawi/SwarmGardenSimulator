@@ -45,7 +45,7 @@ export default function SurveyPage() {
 
   const handleSubmit = async () => {
     if (!hasRequiredStudyContext(studyContext)) {
-      setMessage("Please enter a participant ID to continue.");
+      setMessage("Study session missing. Please restart the study.");
       return;
     }
 

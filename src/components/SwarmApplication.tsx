@@ -594,8 +594,8 @@ export default function SwarmApplication({
     }
 
     if (!hasRequiredStudyContext(studyContext)) {
-      window.alert("Please enter a participant ID before saving.");
-      setSaveState("Add a participant ID before saving");
+      window.alert("Study session missing. Please restart the study.");
+      setSaveState("Study session missing");
       return false;
     }
 
