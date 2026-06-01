@@ -28,7 +28,7 @@ const START_OFFSET = 120;
 const BUCKLE_DURATION = 2000;
 const BUCKLE_STEP_DELAY = 100;
 const REPLAY_STEP_DELAY = 2000;
-const COLOR_FLOW_DURATION = ROWS * COLS * HOP_DELAY + STEPS * STEP_DELAY;
+const COLOR_FLOW_DURATION = COLS * HOP_DELAY + STEPS * STEP_DELAY;
 const BUCKLE_FLOW_DURATION = ROWS * COLS * START_OFFSET + BUCKLE_DURATION;
 const DEFAULT_STATUS_MESSAGE =
   'Press "Save" when you are done, or Reset to start over, then scroll down to revise saved behaviours.';
@@ -483,25 +483,29 @@ export default function SwarmApplication({
     }
   };
 
-  const getFlowOrder = (direction: string) => {
-    const order: Array<[number, number]> = [];
-
+  const getFlowWaves = (direction: string) => {
     if (direction === "left_to_right") {
+      const waves: Array<Array<[number, number]>> = [];
       for (let col = 0; col < COLS; col += 1) {
+        const wave: Array<[number, number]> = [];
         for (let row = 0; row < ROWS; row += 1) {
-          order.push([row, col]);
+          wave.push([row, col]);
         }
+        waves.push(wave);
       }
-      return order;
+      return waves;
     }
 
     if (direction === "right_to_left") {
+      const waves: Array<Array<[number, number]>> = [];
       for (let col = COLS - 1; col >= 0; col -= 1) {
+        const wave: Array<[number, number]> = [];
         for (let row = 0; row < ROWS; row += 1) {
-          order.push([row, col]);
+          wave.push([row, col]);
         }
+        waves.push(wave);
       }
-      return order;
+      return waves;
     }
 
     const centerRow = Math.floor(ROWS / 2);
@@ -519,13 +523,26 @@ export default function SwarmApplication({
     }
 
     next.sort((a, b) => a.distance - b.distance);
-    return next.map(({ row, col }) => [row, col] as [number, number]);
+    const waveMap = new Map<number, Array<[number, number]>>();
+    next.forEach(({ row, col, distance }) => {
+      const wave = waveMap.get(distance) ?? [];
+      wave.push([row, col]);
+      waveMap.set(distance, wave);
+    });
+
+    return [...waveMap.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, wave]) => wave);
   };
 
   const startLedFlow = (direction: string, color = currentColor) => {
     stopFlow();
-    getFlowOrder(direction).forEach(([row, col], index) => {
-      scheduleAnimation(() => fadeCell(row, col, color), index * HOP_DELAY);
+    getFlowWaves(direction).forEach((wave, index) => {
+      scheduleAnimation(() => {
+        wave.forEach(([row, col]) => {
+          fadeCell(row, col, color);
+        });
+      }, index * HOP_DELAY);
     });
   };
 
