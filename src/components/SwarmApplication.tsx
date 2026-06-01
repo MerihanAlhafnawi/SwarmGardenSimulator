@@ -967,6 +967,10 @@ export default function SwarmApplication({
           <button
             onClick={() => {
               const selectedCells = [...selected];
+              if (selectedCells.length === 0) {
+                setRecordingStatus("Select robots first.");
+                return;
+              }
               captureState("color_selected", { color: currentColor, selected: selectedCells });
               fadeToColor({ targetColor: currentColor, selectedOnly: true });
             }}
