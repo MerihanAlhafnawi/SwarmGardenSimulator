@@ -247,6 +247,19 @@ h2 {
   flex-wrap: wrap;
 }
 
+.plain-transition-copy {
+  width: min(900px, calc(100vw - 48px));
+  text-align: center;
+}
+
+.plain-transition-copy p {
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
 .controls-card,
 .grid-card,
 .library-card {

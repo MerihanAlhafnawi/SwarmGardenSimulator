@@ -25,7 +25,7 @@ export default async function PreparePage({
   return (
     <main className="page-shell consent-shell">
       <section className="hero consent-hero">
-        <div className="transition-card">
+        <div className="plain-transition-copy">
           <p>Thank you. Please go through this short tutorial to learn how to use the simulator.</p>
           <div className="transition-actions">
             <Link

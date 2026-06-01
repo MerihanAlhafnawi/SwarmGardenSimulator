@@ -104,7 +104,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     targetId: "recorded-behaviours",
     title: "Saved behaviours",
-    body: "Saved behaviours appear here. You can replay them, download them as JSON, or delete them later.",
+    body: "Saved behaviours appear here. You can replay them or delete them later.",
   },
 ];
 

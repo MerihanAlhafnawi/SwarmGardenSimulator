@@ -26,8 +26,8 @@ export default async function SimulationPreparePage({
   return (
     <main className="page-shell consent-shell">
       <section className="hero consent-hero">
-        <div className="transition-card">
-          <p>Thank you. Next, please create and describe two or more behaviours of your own.</p>
+        <div className="plain-transition-copy">
+          <p>Thank you. Next, please create and describe 2 behaviours of your own.</p>
           <div className="transition-actions">
             <Link href={buildStudyHref("/simulation", studyContext)} className="intro-next">
               Next
