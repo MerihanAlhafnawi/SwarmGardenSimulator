@@ -455,6 +455,26 @@ export default function SwarmApplication({
     }
   };
 
+  const fadeWave = (wave: Array<[number, number]>, targetColor: string) => {
+    const targetRgb = hexToRgb(targetColor);
+    const waveStarts = wave.map(([row, col]) => ({
+      row,
+      col,
+      startRgb: hexToRgb(cellsRef.current[row][col].color),
+    }));
+
+    for (let step = 0; step <= STEPS; step += 1) {
+      scheduleAnimation(() => {
+        const t = step / STEPS;
+        updateCells((draft) => {
+          waveStarts.forEach(({ row, col, startRgb }) => {
+            draft[row][col].color = rgbToHex(interpolateRgb(startRgb, targetRgb, t));
+          });
+        });
+      }, step * STEP_DELAY);
+    }
+  };
+
   const fadeToColor = ({
     targetColor,
     selectedOnly = false,
@@ -538,11 +558,7 @@ export default function SwarmApplication({
   const startLedFlow = (direction: string, color = currentColor) => {
     stopFlow();
     getFlowWaves(direction).forEach((wave, index) => {
-      scheduleAnimation(() => {
-        wave.forEach(([row, col]) => {
-          fadeCell(row, col, color);
-        });
-      }, index * HOP_DELAY);
+      scheduleAnimation(() => fadeWave(wave, color), index * HOP_DELAY);
     });
   };
 
