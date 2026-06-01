@@ -230,6 +230,7 @@ export default function SwarmApplication({
   const animationTimersRef = useRef<number[]>([]);
   const replayTimersRef = useRef<number[]>([]);
   const recordingStartRef = useRef<number>(0);
+  const cellsRef = useRef<Cell[][]>(createGrid());
 
   const isFirebaseReady = Boolean(getFirebaseDb());
   const activeTourStep = TOUR_STEPS[tourStepIndex];
@@ -391,6 +392,7 @@ export default function SwarmApplication({
     setCells((current) => {
       const next = cloneGrid(current);
       updater(next);
+      cellsRef.current = next;
       return next;
     });
   };
@@ -413,7 +415,7 @@ export default function SwarmApplication({
   };
 
   const fadeCell = (row: number, col: number, targetColor: string) => {
-    const startRgb = hexToRgb(cells[row][col].color);
+    const startRgb = hexToRgb(cellsRef.current[row][col].color);
     const targetRgb = hexToRgb(targetColor);
 
     for (let step = 0; step <= STEPS; step += 1) {
@@ -862,7 +864,7 @@ export default function SwarmApplication({
         <div className="application-hero">
           <h1>
             {mode === "prompt"
-              ? "Please implement a behaviour that fits this description"
+              ? "Please implement a behaviour that fits the description"
               : 'Please implement 2 behaviours. All behaviours implemented will show in "Current behaviours".'}
           </h1>
           {mode === "design" ? (
@@ -880,7 +882,7 @@ export default function SwarmApplication({
           </div>
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
-              <span>Please implement a behaviour that fits this description</span>
+              <span>Please implement a behaviour that fits the description</span>
               <p className="prompt-text">{promptText}</p>
               <p className="implement-note">
                 Pressing &quot;Save&quot; will create a behaviour in &quot;Saved behaviours&quot;. Pressing
