@@ -604,7 +604,7 @@ export default function SwarmApplication({
 
   const startBuckleFlow = (direction: string) => {
     stopFlow();
-    getFlowOrder(direction).forEach(([row, col], index) => {
+    getFlowWaves(direction).flat().forEach(([row, col], index) => {
       scheduleAnimation(() => animateBuckleCell(row, col, DEFAULT_LEVEL, 1), index * START_OFFSET);
     });
   };
