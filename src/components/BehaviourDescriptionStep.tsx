@@ -139,6 +139,7 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   const [studyContext, setStudyContext] = useState<StudyContext>(getStoredStudyContext);
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [demoProgress, setDemoProgress] = useState(0);
   const timersRef = useRef<number[]>([]);
   const hasAutoPlayedRef = useRef(false);
@@ -304,6 +305,10 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   };
 
   const handleNext = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!description.trim()) {
       setMessage("Please type a description of this behaviour in your own words");
       return;
@@ -326,6 +331,8 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     storeResponses(nextResponses);
 
     try {
+      setIsSubmitting(true);
+      setMessage("Saving...");
       await saveStudyStep({
         studyContext,
         step: "describe-behaviour",
@@ -344,6 +351,8 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Could not save your response";
       setMessage(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -403,7 +412,9 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
         </label>
 
         <div className="behaviour-actions">
-          <button onClick={() => void handleNext()}>Next</button>
+          <button onClick={() => void handleNext()} disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Next"}
+          </button>
           {message ? <p className="behaviour-message">{message}</p> : null}
         </div>
       </section>
