@@ -231,6 +231,8 @@ export default function SwarmApplication({
   const replayTimersRef = useRef<number[]>([]);
   const recordingStartRef = useRef<number>(0);
   const cellsRef = useRef<Cell[][]>(createGrid());
+  const pendingGridRef = useRef<Cell[][] | null>(null);
+  const flushFrameRef = useRef<number | null>(null);
 
   const isFirebaseReady = Boolean(getFirebaseDb());
   const activeTourStep = TOUR_STEPS[tourStepIndex];
@@ -251,6 +253,14 @@ export default function SwarmApplication({
   useEffect(() => {
     recordingStartRef.current = performance.now();
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (flushFrameRef.current !== null) {
+        window.cancelAnimationFrame(flushFrameRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -388,13 +398,29 @@ export default function SwarmApplication({
     ]);
   };
 
+  const flushPendingGrid = () => {
+    flushFrameRef.current = null;
+
+    if (!pendingGridRef.current) {
+      return;
+    }
+
+    const next = pendingGridRef.current;
+    pendingGridRef.current = null;
+    cellsRef.current = next;
+    setCells(next);
+  };
+
   const updateCells = (updater: (draft: Cell[][]) => void) => {
-    setCells((current) => {
-      const next = cloneGrid(current);
-      updater(next);
-      cellsRef.current = next;
-      return next;
-    });
+    const base = pendingGridRef.current
+      ? cloneGrid(pendingGridRef.current)
+      : cloneGrid(cellsRef.current);
+    updater(base);
+    pendingGridRef.current = base;
+
+    if (flushFrameRef.current === null) {
+      flushFrameRef.current = window.requestAnimationFrame(flushPendingGrid);
+    }
   };
 
   const toggleSelection = (row: number, col: number) => {
