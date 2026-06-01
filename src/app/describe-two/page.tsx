@@ -5,7 +5,7 @@ export default function DescribeTwoPage() {
     <BehaviourDescriptionStep
       config={{
         title: "Describe This Behaviour",
-        helperText: "Please describe this behaviour in your own words.",
+        helperText: "Please describe the Swarm Garden behaviour in your own words.",
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-2",
         stimulus:

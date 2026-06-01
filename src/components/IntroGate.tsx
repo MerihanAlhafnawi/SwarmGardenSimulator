@@ -24,6 +24,9 @@ export default function IntroGate({ nextHref }: { nextHref: string }) {
       </div>
 
       <div className="intro-actions">
+        <p className={`intro-helper ${videoFinished ? "intro-helper-hidden" : ""}`}>
+          Please finish the video before continuing.
+        </p>
         <Link
           href={videoFinished ? nextHref : "#"}
           className={`intro-next ${videoFinished ? "" : "intro-next-disabled"}`}
@@ -36,9 +39,6 @@ export default function IntroGate({ nextHref }: { nextHref: string }) {
         >
           Next
         </Link>
-        {!videoFinished ? (
-          <p className="intro-helper">Please finish the video before continuing.</p>
-        ) : null}
       </div>
     </>
   );

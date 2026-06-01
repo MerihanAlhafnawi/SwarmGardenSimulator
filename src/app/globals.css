@@ -531,6 +531,12 @@ button:disabled {
 .intro-helper {
   color: var(--muted);
   margin: 0;
+  min-width: 290px;
+  text-align: right;
+}
+
+.intro-helper-hidden {
+  visibility: hidden;
 }
 
 .recording-buttons {
@@ -727,6 +733,7 @@ button:disabled {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  align-items: center;
 }
 
 .intro-next {
