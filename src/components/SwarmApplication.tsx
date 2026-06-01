@@ -222,7 +222,6 @@ export default function SwarmApplication({
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress | null>(null);
-  const [replayPauseSecondsById, setReplayPauseSecondsById] = useState<Record<string, string[]>>({});
   const [transitionMessage, setTransitionMessage] = useState("");
   const [showPromptNextButton, setShowPromptNextButton] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -822,15 +821,6 @@ export default function SwarmApplication({
     }
   };
 
-  const getReplayPauseMs = (recordingId: string, stepIndex: number) => {
-    const parsed = Number(replayPauseSecondsById[recordingId]?.[stepIndex] ?? "2");
-    if (!Number.isFinite(parsed)) {
-      return REPLAY_STEP_DELAY;
-    }
-
-    return Math.max(0, parsed) * 1000;
-  };
-
   const playbackRecording = (recordingId: string, events: RecordingEvent[]) => {
     resetSwarm();
     stopFlow();
@@ -848,7 +838,7 @@ export default function SwarmApplication({
         });
         runPlaybackAction(entry);
       }, playbackOffset);
-      playbackOffset += getReplayActionDuration(entry) + getReplayPauseMs(recordingId, index);
+      playbackOffset += getReplayActionDuration(entry) + REPLAY_STEP_DELAY;
     });
     scheduleReplay(() => {
       setPlayingRecordingId(null);
@@ -1207,29 +1197,7 @@ export default function SwarmApplication({
                             >
                               <span className="timeline-dot" />
                               {index < recordingItem.events.length - 1 ? (
-                                <span className="timeline-gap">
-                                  <label className="replay-delay-input replay-delay-inline">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.5"
-                                      value={replayPauseSecondsById[recordingItem.id]?.[index] ?? "2"}
-                                      onChange={(event) =>
-                                        setReplayPauseSecondsById((current) => {
-                                          const currentValues = [...(current[recordingItem.id] ?? [])];
-                                          currentValues[index] = event.target.value;
-                                          return {
-                                            ...current,
-                                            [recordingItem.id]: currentValues,
-                                          };
-                                        })
-                                      }
-                                      aria-label={`Pause after step ${index + 1} in seconds`}
-                                    />
-                                    <span>s</span>
-                                  </label>
-                                  <span className="timeline-line" />
-                                </span>
+                                <span className="timeline-line" />
                               ) : null}
                             </div>
                           );

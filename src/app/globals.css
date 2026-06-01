@@ -572,23 +572,6 @@ button:disabled {
   font-size: 0.92rem;
 }
 
-.replay-delay-input {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-}
-
-.replay-delay-input input {
-  width: 64px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(116, 83, 54, 0.18);
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--text);
-  font-size: 0.92rem;
-}
-
 .playback-timeline {
   display: flex;
   align-items: center;
@@ -602,25 +585,6 @@ button:disabled {
   align-items: center;
   flex: 1 1 0;
   min-width: 24px;
-}
-
-.timeline-gap {
-  display: grid;
-  gap: 6px;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 56px;
-}
-
-.replay-delay-inline {
-  justify-self: center;
-  font-size: 0.82rem;
-}
-
-.replay-delay-inline input {
-  width: 54px;
-  padding: 4px 6px;
-  font-size: 0.84rem;
 }
 
 .timeline-dot {
