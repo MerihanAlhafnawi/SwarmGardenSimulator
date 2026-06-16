@@ -919,16 +919,6 @@ export default function SwarmApplication({
     router.push(buildStudyHref(promptNextHref, studyContext));
   };
 
-  const handleReviewContinue = async () => {
-    if (mode === "prompt") {
-      await handlePromptNext();
-      return;
-    }
-
-    setShowSavedReview(false);
-    router.push(buildStudyHref("/survey", studyContext));
-  };
-
   const handleReviewEdit = () => {
     setShowSavedReview(false);
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
@@ -938,6 +928,13 @@ export default function SwarmApplication({
         block: "start",
       });
     }, 80);
+  };
+
+  const handlePlaybackClick = (recordingId: string, events: RecordingEvent[]) => {
+    if (showSavedReview) {
+      setShowSavedReview(false);
+    }
+    playbackRecording(recordingId, events);
   };
 
   return (
@@ -1118,7 +1115,7 @@ export default function SwarmApplication({
           >
             Reset
           </button>
-          {mode === "design" && !tourOpen ? (
+          {mode === "design" && !tourOpen && !showSavedReview ? (
             <button
               className="ghost"
               onClick={() => {
@@ -1184,16 +1181,14 @@ export default function SwarmApplication({
           </div>
 
           {showSavedReview ? (
-            <div className="saved-review-banner" aria-live="polite">
+            <div className="saved-review-banner tour-target-active" aria-live="polite">
               <p>
-                Thank you. Please review the behaviour below. Press Play to review it, then choose
-                Edit or Next.
+                Thank you. Please review the behaviour below and press Play to watch it.
               </p>
               <div className="saved-review-actions">
                 <button className="ghost" onClick={handleReviewEdit}>
                   Edit
                 </button>
-                <button onClick={() => void handleReviewContinue()}>Next</button>
               </div>
             </div>
           ) : null}
@@ -1206,7 +1201,7 @@ export default function SwarmApplication({
                   : "No saved behaviours yet. Save and it will appear here."}
               </p>
             ) : (
-              savedRecordings.map((recordingItem) => (
+              savedRecordings.map((recordingItem, index) => (
                 <article key={recordingItem.id} className="recording-card">
                   <div className="recording-meta">
                     <h3>{recordingItem.title}</h3>
@@ -1265,7 +1260,12 @@ export default function SwarmApplication({
                   <div className="recording-actions">
                     <span>{recordingItem.events.length} events</span>
                     <div className="recording-buttons">
-                      <button onClick={() => playbackRecording(recordingItem.id, recordingItem.events)}>
+                      <button
+                        className={
+                          showSavedReview && index === 0 ? "tour-target-active review-play-target" : ""
+                        }
+                        onClick={() => handlePlaybackClick(recordingItem.id, recordingItem.events)}
+                      >
                         {playingRecordingId === recordingItem.id ? "Playing" : "Play"}
                       </button>
                       <button
@@ -1313,6 +1313,8 @@ export default function SwarmApplication({
           </aside>
         </>
       ) : null}
+
+      {showSavedReview ? <div className="tour-overlay" /> : null}
 
     </main>
   );
