@@ -919,6 +919,16 @@ export default function SwarmApplication({
     router.push(buildStudyHref(promptNextHref, studyContext));
   };
 
+  const handleReviewContinue = async () => {
+    if (mode === "prompt") {
+      await handlePromptNext();
+      return;
+    }
+
+    setShowSavedReview(false);
+    router.push(buildStudyHref("/survey", studyContext));
+  };
+
   const handleReviewEdit = () => {
     setShowSavedReview(false);
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
@@ -931,9 +941,6 @@ export default function SwarmApplication({
   };
 
   const handlePlaybackClick = (recordingId: string, events: RecordingEvent[]) => {
-    if (showSavedReview) {
-      setShowSavedReview(false);
-    }
     playbackRecording(recordingId, events);
   };
 
@@ -1182,7 +1189,10 @@ export default function SwarmApplication({
 
           {showSavedReview ? (
             <div className="saved-review-prompt" aria-live="polite">
-              <p>Thank you. Please review the behaviour below and press Play to watch it.</p>
+              <p>
+                Thank you. Please press Play to review the behaviour you implemented. If you like
+                it, press Next. If not, delete it and create it again.
+              </p>
             </div>
           ) : null}
 
@@ -1282,6 +1292,14 @@ export default function SwarmApplication({
               ))
             )}
           </div>
+
+          {showSavedReview ? (
+            <div className="toolbar next-row">
+              <button className="intro-next" onClick={() => void handleReviewContinue()}>
+                Next
+              </button>
+            </div>
+          ) : null}
         </section>
 
       {tourOpen ? (
