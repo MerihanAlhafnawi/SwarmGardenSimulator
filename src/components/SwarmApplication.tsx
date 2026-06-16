@@ -7,6 +7,7 @@ import type { CSSProperties } from "react";
 import { FirestoreError } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import StudyStepProgress from "@/components/StudyStepProgress";
+import { storeReviewRecordings } from "@/lib/review";
 import {
   buildStudyHref,
   deleteBehaviourRecording,
@@ -667,22 +668,53 @@ export default function SwarmApplication({
     }
 
     if (mode === "prompt") {
-      const localSavedRecording = {
-        id: promptSlot ?? `prompt-${Date.now()}`,
-        title: description,
-        notes: description,
-        createdAtLabel: new Date().toLocaleString(),
-        events: recordData,
-        persisted: false,
-      };
+      try {
+        const savedEntry = await saveBehaviourRecording({
+          studyContext,
+          step: "simulation",
+          description,
+          events: recordData as Record<string, unknown>[],
+          promptSlot,
+        });
 
-      setSavedRecordings([localSavedRecording]);
-      setSaveState("Saved for this step");
-      resetSwarm();
-      setRecordingStatus("Thank you, your behaviour has been saved.");
-      setShowPromptNextButton(false);
-      setTransitionMessage(SAVED_TRANSITION_MESSAGE);
-      return true;
+        const localSavedRecording = {
+          id: savedEntry.id,
+          title: description,
+          notes: description,
+          createdAtLabel: new Date(savedEntry.submittedAt).toLocaleString(),
+          events: recordData,
+          persisted: true,
+        };
+
+        setSavedRecordings([localSavedRecording]);
+        storeReviewRecordings([
+          {
+            id: localSavedRecording.id,
+            title: localSavedRecording.title,
+            notes: localSavedRecording.notes,
+            createdAtLabel: localSavedRecording.createdAtLabel,
+            eventCount: localSavedRecording.events.length,
+          },
+        ]);
+        setSaveState("Saved to Firestore for this step");
+        resetSwarm();
+        router.push(
+          buildStudyHref("/review", studyContext, {
+            continue: promptNextHref,
+            edit: window.location.pathname,
+            review: "prompt",
+          }),
+        );
+        return true;
+      } catch (error) {
+        console.error(error);
+        const message =
+          error instanceof FirestoreError || error instanceof Error
+            ? error.message
+            : "Unknown Firebase write error";
+        setSaveState(`Save failed: ${message}`);
+        return false;
+      }
     }
 
     try {
@@ -704,9 +736,31 @@ export default function SwarmApplication({
       };
 
       setSavedRecordings((current) => [nextSavedRecording, ...current]);
+      storeReviewRecordings([
+        {
+          id: nextSavedRecording.id,
+          title: nextSavedRecording.title,
+          notes: nextSavedRecording.notes,
+          createdAtLabel: nextSavedRecording.createdAtLabel,
+          eventCount: nextSavedRecording.events.length,
+        },
+        ...savedRecordings.map((recordingItem) => ({
+          id: recordingItem.id,
+          title: recordingItem.title,
+          notes: recordingItem.notes,
+          createdAtLabel: recordingItem.createdAtLabel,
+          eventCount: recordingItem.events.length,
+        })),
+      ]);
       setSaveState("Saved to Firestore for this session");
       resetSwarm();
-      setRecordingStatus("Thank you, your behaviour has been saved.");
+      router.push(
+        buildStudyHref("/review", studyContext, {
+          continue: window.location.pathname,
+          edit: window.location.pathname,
+          review: "design",
+        }),
+      );
       return true;
     } catch (error) {
       console.error(error);
