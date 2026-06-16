@@ -1135,12 +1135,12 @@ export default function SwarmApplication({
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
 
-        {mode === "prompt" && (showPromptNextButton || savedRecordings.length > 0) ? (
+        {mode === "prompt" && !showSavedReview && (showPromptNextButton || savedRecordings.length > 0) ? (
           <div className="toolbar next-row">
             <button className="intro-next" onClick={handlePromptNext}>
               Next
             </button>
-          </div>
+            </div>
         ) : null}
 
       </section>
@@ -1182,6 +1182,21 @@ export default function SwarmApplication({
               <h2>{mode === "prompt" ? "Current saved behaviour" : "Saved behaviours"}</h2>
             </div>
           </div>
+
+          {showSavedReview ? (
+            <div className="saved-review-banner" aria-live="polite">
+              <p>
+                Thank you. Please review the behaviour below. Press Play to review it, then choose
+                Edit or Next.
+              </p>
+              <div className="saved-review-actions">
+                <button className="ghost" onClick={handleReviewEdit}>
+                  Edit
+                </button>
+                <button onClick={() => void handleReviewContinue()}>Next</button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="recording-list">
             {savedRecordings.length === 0 ? (
@@ -1299,19 +1314,6 @@ export default function SwarmApplication({
         </>
       ) : null}
 
-      {showSavedReview ? (
-        <div className="transition-overlay" aria-live="polite">
-          <div className="transition-card">
-            <p>Thank you. Please review your current behaviour below. If you like it, continue. If not, edit the behaviour.</p>
-            <div className="transition-actions">
-              <button onClick={() => void handleReviewContinue()}>Next</button>
-              <button className="ghost" onClick={handleReviewEdit}>
-                Edit
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }

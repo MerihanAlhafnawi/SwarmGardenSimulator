@@ -503,6 +503,28 @@ button:disabled {
   margin-top: 18px;
 }
 
+.saved-review-banner {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(116, 83, 54, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.saved-review-banner p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.saved-review-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .recording-card {
   border: 1px solid rgba(116, 83, 54, 0.14);
   border-radius: 22px;
