@@ -1181,15 +1181,11 @@ export default function SwarmApplication({
           </div>
 
           {showSavedReview ? (
-            <div className="saved-review-banner tour-target-active" aria-live="polite">
-              <p>
-                Thank you. Please review the behaviour below and press Play to watch it.
-              </p>
-              <div className="saved-review-actions">
-                <button className="ghost" onClick={handleReviewEdit}>
-                  Edit
-                </button>
-              </div>
+            <div className="saved-review-prompt" aria-live="polite">
+              <p>Thank you. Please review the behaviour below and press Play to watch it.</p>
+              <button className="ghost tour-target-active" onClick={handleReviewEdit}>
+                Edit
+              </button>
             </div>
           ) : null}
 
