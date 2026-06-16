@@ -1310,7 +1310,7 @@ export default function SwarmApplication({
         </>
       ) : null}
 
-      {showSavedReview ? <div className="tour-overlay" /> : null}
+      {showSavedReview ? <div className="review-overlay" /> : null}
 
     </main>
   );

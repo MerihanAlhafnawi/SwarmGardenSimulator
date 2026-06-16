@@ -508,7 +508,7 @@ button:disabled {
   top: 28px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 40;
+  z-index: 45;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -521,10 +521,10 @@ button:disabled {
 
 .saved-review-prompt p {
   margin: 0;
-  color: #fff7ef;
+  color: var(--text);
   font-size: clamp(1.1rem, 2vw, 1.5rem);
   line-height: 1.35;
-  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  font-weight: 600;
 }
 
 .saved-review-prompt button {
@@ -716,6 +716,14 @@ button:disabled {
   inset: 0;
   background: rgba(46, 38, 29, 0.34);
   z-index: 30;
+}
+
+.review-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(46, 38, 29, 0.22);
+  z-index: 30;
+  pointer-events: none;
 }
 
 .tour-card {
