@@ -1189,10 +1189,7 @@ export default function SwarmApplication({
 
           {showSavedReview ? (
             <div className="saved-review-prompt" aria-live="polite">
-              <p>
-                Thank you. Please press Play to review the behaviour you implemented. If you like
-                it, press Next. If not, delete it and create it again.
-              </p>
+              <p>Thank you. Press Play to review your behaviour, then press Next.</p>
             </div>
           ) : null}
 
