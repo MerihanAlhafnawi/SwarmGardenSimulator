@@ -7,7 +7,6 @@ import type { CSSProperties } from "react";
 import { FirestoreError } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import StudyStepProgress from "@/components/StudyStepProgress";
-import { storeReviewRecordings } from "@/lib/review";
 import {
   buildStudyHref,
   deleteBehaviourRecording,
@@ -33,8 +32,6 @@ const COLOR_FLOW_DURATION = COLS * HOP_DELAY + STEPS * STEP_DELAY;
 const BUCKLE_FLOW_DURATION = ROWS * COLS * START_OFFSET + BUCKLE_DURATION;
 const DEFAULT_STATUS_MESSAGE =
   'Press "Save" when you are done, or Reset to start over, then scroll down to revise saved behaviours.';
-const SAVED_TRANSITION_MESSAGE =
-  "Thank you, your behaviour has been saved. Click Next to continue to the next step, or Cancel if you would like to revise your current behaviour.";
 
 type Cell = {
   row: number;
@@ -223,8 +220,8 @@ export default function SwarmApplication({
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null);
   const [playingRecordingId, setPlayingRecordingId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress | null>(null);
-  const [transitionMessage, setTransitionMessage] = useState("");
   const [showPromptNextButton, setShowPromptNextButton] = useState(false);
+  const [showSavedReview, setShowSavedReview] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const animationTimersRef = useRef<number[]>([]);
@@ -239,6 +236,7 @@ export default function SwarmApplication({
   const progressStep =
     mode === "prompt" ? (promptSlot === "provided-description-1" ? 4 : 5) : 6;
   const buckleStatusMessage = getBuckleStatusMessage(selected.size);
+  const recordedBehavioursRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setSaveState(
@@ -633,6 +631,7 @@ export default function SwarmApplication({
     setRecordData([]);
     setRecordingNotes("");
     setShowPromptNextButton(false);
+    setShowSavedReview(false);
     recordingStartRef.current = performance.now();
     setRecording(true);
     setPlayingRecordingId(null);
@@ -646,6 +645,13 @@ export default function SwarmApplication({
         }
       }
     });
+  };
+
+  const openSavedReview = () => {
+    setShowSavedReview(true);
+    window.setTimeout(() => {
+      recordedBehavioursRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   };
 
   const saveRecording = async () => {
@@ -687,24 +693,11 @@ export default function SwarmApplication({
         };
 
         setSavedRecordings([localSavedRecording]);
-        storeReviewRecordings([
-          {
-            id: localSavedRecording.id,
-            title: localSavedRecording.title,
-            notes: localSavedRecording.notes,
-            createdAtLabel: localSavedRecording.createdAtLabel,
-            eventCount: localSavedRecording.events.length,
-          },
-        ]);
         setSaveState("Saved to Firestore for this step");
         resetSwarm();
-        router.push(
-          buildStudyHref("/review", studyContext, {
-            continue: promptNextHref,
-            edit: window.location.pathname,
-            review: "prompt",
-          }),
-        );
+        setShowPromptNextButton(false);
+        setRecordingStatus("");
+        openSavedReview();
         return true;
       } catch (error) {
         console.error(error);
@@ -736,31 +729,10 @@ export default function SwarmApplication({
       };
 
       setSavedRecordings((current) => [nextSavedRecording, ...current]);
-      storeReviewRecordings([
-        {
-          id: nextSavedRecording.id,
-          title: nextSavedRecording.title,
-          notes: nextSavedRecording.notes,
-          createdAtLabel: nextSavedRecording.createdAtLabel,
-          eventCount: nextSavedRecording.events.length,
-        },
-        ...savedRecordings.map((recordingItem) => ({
-          id: recordingItem.id,
-          title: recordingItem.title,
-          notes: recordingItem.notes,
-          createdAtLabel: recordingItem.createdAtLabel,
-          eventCount: recordingItem.events.length,
-        })),
-      ]);
       setSaveState("Saved to Firestore for this session");
       resetSwarm();
-      router.push(
-        buildStudyHref("/review", studyContext, {
-          continue: window.location.pathname,
-          edit: window.location.pathname,
-          review: "design",
-        }),
-      );
+      setRecordingStatus("");
+      openSavedReview();
       return true;
     } catch (error) {
       console.error(error);
@@ -932,21 +904,6 @@ export default function SwarmApplication({
     }
   };
 
-  const proceedFromSavedTransition = async () => {
-    const persisted = await persistPromptRecording();
-    if (!persisted) {
-      return;
-    }
-    setTransitionMessage("");
-    router.push(buildStudyHref(promptNextHref, studyContext));
-  };
-
-  const cancelSavedTransition = () => {
-    setTransitionMessage("");
-    setShowPromptNextButton(true);
-    setRecordingStatus(DEFAULT_STATUS_MESSAGE);
-  };
-
   const handlePromptNext = async () => {
     if (savedRecordings.length === 0) {
       setRecordingStatus("Please implement a behaviour first.");
@@ -958,7 +915,29 @@ export default function SwarmApplication({
       return;
     }
 
+    setShowSavedReview(false);
     router.push(buildStudyHref(promptNextHref, studyContext));
+  };
+
+  const handleReviewContinue = async () => {
+    if (mode === "prompt") {
+      await handlePromptNext();
+      return;
+    }
+
+    setShowSavedReview(false);
+    router.push(buildStudyHref("/survey", studyContext));
+  };
+
+  const handleReviewEdit = () => {
+    setShowSavedReview(false);
+    setRecordingStatus(DEFAULT_STATUS_MESSAGE);
+    window.setTimeout(() => {
+      document.querySelector<HTMLElement>('[data-tour-id="prompt-panel"]')?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
   };
 
   return (
@@ -1193,7 +1172,11 @@ export default function SwarmApplication({
         </div>
       </section>
 
-      <section className={`library-card ${getTourClass("recorded-behaviours")}`} data-tour-id="recorded-behaviours">
+      <section
+          ref={recordedBehavioursRef}
+          className={`library-card ${getTourClass("recorded-behaviours")}`}
+          data-tour-id="recorded-behaviours"
+      >
           <div className="library-header">
             <div>
               <h2>{mode === "prompt" ? "Current saved behaviour" : "Saved behaviours"}</h2>
@@ -1316,14 +1299,14 @@ export default function SwarmApplication({
         </>
       ) : null}
 
-      {transitionMessage ? (
+      {showSavedReview ? (
         <div className="transition-overlay" aria-live="polite">
           <div className="transition-card">
-            <p>{transitionMessage}</p>
+            <p>Thank you. Please review your current behaviour below. If you like it, continue. If not, edit the behaviour.</p>
             <div className="transition-actions">
-              <button onClick={proceedFromSavedTransition}>Next</button>
-              <button className="ghost" onClick={cancelSavedTransition}>
-                Cancel
+              <button onClick={() => void handleReviewContinue()}>Next</button>
+              <button className="ghost" onClick={handleReviewEdit}>
+                Edit
               </button>
             </div>
           </div>
