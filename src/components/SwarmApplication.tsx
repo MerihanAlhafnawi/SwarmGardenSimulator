@@ -101,8 +101,8 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     targetId: "recorded-behaviours",
-    title: "Saved behaviours",
-    body: "Saved behaviours appear here. You can replay them or delete them later.",
+    title: "Current saved behaviour",
+    body: "Your current saved behaviour appears here. You can press Play to review it or delete it and make it again.",
   },
 ];
 
@@ -1290,14 +1290,15 @@ export default function SwarmApplication({
             )}
           </div>
 
-          {showSavedReview ? (
-            <div className="toolbar next-row">
-              <button className="intro-next" onClick={() => void handleReviewContinue()}>
-                Next
-              </button>
-            </div>
-          ) : null}
         </section>
+
+      {showSavedReview ? (
+        <div className="toolbar next-row review-next-row">
+          <button className="intro-next" onClick={() => void handleReviewContinue()}>
+            Next
+          </button>
+        </div>
+      ) : null}
 
       {tourOpen ? (
         <>

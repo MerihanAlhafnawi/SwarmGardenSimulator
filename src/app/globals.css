@@ -552,6 +552,11 @@ button:disabled {
   margin-top: 20px;
 }
 
+.review-next-row {
+  margin-top: 28px;
+  margin-bottom: 12px;
+}
+
 .next-step-button {
   min-width: 140px;
 }
