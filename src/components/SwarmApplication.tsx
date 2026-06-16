@@ -1183,9 +1183,6 @@ export default function SwarmApplication({
           {showSavedReview ? (
             <div className="saved-review-prompt" aria-live="polite">
               <p>Thank you. Please review the behaviour below and press Play to watch it.</p>
-              <button className="ghost tour-target-active" onClick={handleReviewEdit}>
-                Edit
-              </button>
             </div>
           ) : null}
 

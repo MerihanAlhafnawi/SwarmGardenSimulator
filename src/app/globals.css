@@ -515,6 +515,11 @@ button:disabled {
   flex-wrap: wrap;
   justify-content: center;
   width: min(900px, calc(100vw - 32px));
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: rgba(255, 250, 242, 0.96);
+  border: 1px solid rgba(116, 83, 54, 0.16);
+  box-shadow: 0 16px 36px rgba(77, 54, 31, 0.18);
   text-align: center;
   pointer-events: none;
 }
@@ -525,10 +530,6 @@ button:disabled {
   font-size: clamp(1.1rem, 2vw, 1.5rem);
   line-height: 1.35;
   font-weight: 600;
-}
-
-.saved-review-prompt button {
-  pointer-events: auto;
 }
 
 .recording-card {
