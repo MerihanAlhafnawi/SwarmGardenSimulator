@@ -928,6 +928,17 @@ export default function SwarmApplication({
       return;
     }
 
+    if (savedRecordings.length < 2) {
+      setRecordingStatus("Please implement one more behaviour before continuing.");
+      window.setTimeout(() => {
+        document.querySelector<HTMLElement>('[data-tour-id="prompt-panel"]')?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 80);
+      return;
+    }
+
     setShowSavedReview(false);
     router.push(buildStudyHref("/survey", studyContext));
   };
@@ -1128,30 +1139,8 @@ export default function SwarmApplication({
           >
             Reset
           </button>
-          {mode === "design" && !tourOpen && !showSavedReview ? (
-            <button
-              className="ghost"
-              onClick={() => {
-                if (savedRecordings.length === 0) {
-                  setRecordingStatus("Please implement a behaviour first.");
-                  return;
-                }
-                router.push(buildStudyHref("/survey", studyContext));
-              }}
-            >
-              Next
-            </button>
-          ) : null}
           {recordingStatus ? <span className="controls-status-text">{recordingStatus}</span> : null}
         </div>
-
-        {mode === "prompt" && !showSavedReview && (showPromptNextButton || savedRecordings.length > 0) ? (
-          <div className="toolbar next-row">
-            <button className="intro-next" onClick={handlePromptNext}>
-              Next
-            </button>
-            </div>
-        ) : null}
 
       </section>
 
@@ -1195,7 +1184,11 @@ export default function SwarmApplication({
 
           {showSavedReview ? (
             <div className="saved-review-prompt" aria-live="polite">
-              <p>Thank you. Press Play to review your behaviour, then press Next.</p>
+              <p>
+                {mode === "design" && savedRecordings.length < 2
+                  ? "Thank you. Press Play to review your behaviour, then create one more before pressing Next."
+                  : "Thank you. Press Play to review your behaviour, then press Next."}
+              </p>
             </div>
           ) : null}
 
@@ -1298,9 +1291,13 @@ export default function SwarmApplication({
 
         </section>
 
-      {showSavedReview ? (
+      {(mode === "prompt" && (showPromptNextButton || savedRecordings.length > 0)) ||
+      (mode === "design" && savedRecordings.length > 0) ? (
         <div className="toolbar next-row review-next-row">
-          <button className="intro-next" onClick={() => void handleReviewContinue()}>
+          <button
+            className="intro-next"
+            onClick={() => void (mode === "prompt" ? handlePromptNext() : handleReviewContinue())}
+          >
             Next
           </button>
         </div>
