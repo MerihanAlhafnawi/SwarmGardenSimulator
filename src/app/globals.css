@@ -990,6 +990,19 @@ textarea {
   gap: 18px;
 }
 
+.admin-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-upload-row {
+  align-items: end;
+}
+
+.admin-message {
+  max-width: none;
+}
+
 .survey-question {
   display: grid;
   gap: 10px;
