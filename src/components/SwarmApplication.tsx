@@ -199,6 +199,7 @@ export default function SwarmApplication({
   promptNextHref = "/simulation-prepare",
   promptSlot,
   studyStep,
+  promptLabel,
 }: {
   forceTour?: boolean;
   mode?: "design" | "prompt";
@@ -206,6 +207,7 @@ export default function SwarmApplication({
   promptNextHref?: string;
   promptSlot?: string;
   studyStep?: number;
+  promptLabel?: string;
 }) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
@@ -951,7 +953,7 @@ export default function SwarmApplication({
         <div className="application-hero">
           <h1>
             {mode === "prompt"
-              ? "Please implement a behaviour that fits the description"
+              ? `${promptLabel ? `${promptLabel}: ` : ""}Please implement a behaviour that fits the description`
               : 'Please implement 2 behaviours. All behaviours implemented will show in "Current behaviours".'}
           </h1>
           {mode === "design" ? (
@@ -969,7 +971,10 @@ export default function SwarmApplication({
           </div>
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
-              <span>Please implement a behaviour that fits the description</span>
+              <span>
+                {promptLabel ? `${promptLabel}: ` : ""}
+                Please implement a behaviour that fits the description
+              </span>
               <p className="prompt-text">{promptText}</p>
               <p className="implement-note">
                 Pressing &quot;Save&quot; will create a behaviour in &quot;Saved behaviours&quot;. Pressing
