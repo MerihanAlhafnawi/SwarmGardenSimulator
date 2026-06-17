@@ -160,7 +160,7 @@ export default function SurveyPage() {
       {submitted ? (
         <div className="transition-overlay" aria-live="polite">
           <div className="transition-card">
-            <p>Thank you for taking the survey. Your responses have been saved.</p>
+            <p>Thank you for participating in the study. Your responses have been saved.</p>
           </div>
         </div>
       ) : null}
