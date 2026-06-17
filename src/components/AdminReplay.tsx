@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
+import { getFirebaseDb } from "@/lib/firebase";
 
 const ROWS = 3;
 const COLS = 12;
@@ -229,6 +231,7 @@ export default function AdminReplay() {
   const [rawJson, setRawJson] = useState<unknown>(null);
   const [records, setRecords] = useState<StudyRecordLike[]>([]);
   const [message, setMessage] = useState("");
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
@@ -537,6 +540,30 @@ export default function AdminReplay() {
     }, playbackOffset + 600);
   };
 
+  const handleDownloadAllJson = async () => {
+    const db = getFirebaseDb();
+    if (!db) {
+      setMessage("Firebase is not configured for this app.");
+      return;
+    }
+
+    try {
+      setIsDownloadingAll(true);
+      setMessage("Downloading all study data...");
+      const snapshot = await getDocs(collection(db, "recordings"));
+      const allRecords = snapshot.docs.map((doc) => ({
+        _docId: doc.id,
+        ...doc.data(),
+      }));
+      downloadJsonFile("all-study-data.json", allRecords);
+      setMessage(`Downloaded ${allRecords.length} study record${allRecords.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not download data from Firebase.");
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
+
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -576,12 +603,8 @@ export default function AdminReplay() {
             <span>Upload JSON</span>
             <input type="file" accept="application/json,.json" onChange={handleUpload} />
           </label>
-          <button
-            className="ghost"
-            onClick={() => rawJson && downloadJsonFile("study-data.json", rawJson)}
-            disabled={!rawJson}
-          >
-            Download JSON
+          <button className="ghost" onClick={() => void handleDownloadAllJson()} disabled={isDownloadingAll}>
+            {isDownloadingAll ? "Downloading..." : "Download JSON"}
           </button>
         </div>
 
