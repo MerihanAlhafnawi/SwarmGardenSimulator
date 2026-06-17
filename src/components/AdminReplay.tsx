@@ -55,6 +55,8 @@ type PlaybackProgress = {
   activeDuration: number;
 };
 
+type PlaybackCellsInput = Array<string | [number, number]>;
+
 const createGrid = (): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
     Array.from({ length: COLS }, (_, col) => ({
