@@ -165,6 +165,18 @@ const interpolateRgb = (start: number[], end: number[], t: number) =>
 
 const cloneGrid = (grid: Cell[][]) => grid.map((row) => row.map((cell) => ({ ...cell })));
 const TOUR_SELECTION = ["1:4", "1:5", "1:6"];
+
+const TOUR_DEMO_RECORDING: SavedRecording = {
+  id: "tour-demo",
+  title: "Demo behaviour",
+  notes: "A sample saved behaviour for the tutorial.",
+  createdAtLabel: "Tutorial example",
+  persisted: false,
+  events: [
+    { time: 0, action: "color_flow", data: { direction: "left_to_right", color: "#d86b4b" } },
+    { time: 1, action: "buckle_selected", data: { val: String(6), selected: TOUR_SELECTION } },
+  ],
+};
 const getPlaybackStepLabel = (action: string) => {
   switch (action) {
     case "color_selected":
@@ -268,6 +280,7 @@ export default function SwarmApplication({
     const hasSeenTour = window.localStorage.getItem("swarm-tour-dismissed") === "true";
 
     if (forceTour || !hasSeenTour) {
+      setSavedRecordings((current) => (current.length === 0 ? [TOUR_DEMO_RECORDING] : current));
       setTourOpen(true);
       setTourStepIndex(0);
     }
@@ -327,6 +340,9 @@ export default function SwarmApplication({
   }, [activeTourStep.targetId, tourOpen]);
 
   const startTour = () => {
+    if (savedRecordings.length === 0) {
+      setSavedRecordings([TOUR_DEMO_RECORDING]);
+    }
     setTourStepIndex(0);
     setTourOpen(true);
   };
@@ -335,6 +351,9 @@ export default function SwarmApplication({
     window.localStorage.setItem("swarm-tour-dismissed", "true");
     setRecordingStatus(DEFAULT_STATUS_MESSAGE);
     setSelected(new Set());
+    setSavedRecordings((current) =>
+      current.length === 1 && current[0]?.id === TOUR_DEMO_RECORDING.id ? [] : current,
+    );
     setTourOpen(false);
   };
 
