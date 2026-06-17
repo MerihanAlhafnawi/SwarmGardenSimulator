@@ -576,11 +576,13 @@ export default function AdminReplay() {
             <span>Upload JSON</span>
             <input type="file" accept="application/json,.json" onChange={handleUpload} />
           </label>
-          {rawJson ? (
-            <button className="ghost" onClick={() => downloadJsonFile("study-data.json", rawJson)}>
-              Download JSON
-            </button>
-          ) : null}
+          <button
+            className="ghost"
+            onClick={() => rawJson && downloadJsonFile("study-data.json", rawJson)}
+            disabled={!rawJson}
+          >
+            Download JSON
+          </button>
         </div>
 
         <div className="toolbar admin-upload-row">
