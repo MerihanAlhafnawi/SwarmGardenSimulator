@@ -6,6 +6,7 @@ export default function ImplementTwoPage() {
       mode="prompt"
       promptText="a sun rising over a garden"
       promptSlot="provided-description-2"
+      studyStep={5}
     />
   );
 }

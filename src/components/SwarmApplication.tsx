@@ -198,12 +198,14 @@ export default function SwarmApplication({
   promptText = "a sun rising over a garden",
   promptNextHref = "/simulation-prepare",
   promptSlot,
+  studyStep,
 }: {
   forceTour?: boolean;
   mode?: "design" | "prompt";
   promptText?: string;
   promptNextHref?: string;
   promptSlot?: string;
+  studyStep?: number;
 }) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
@@ -233,8 +235,7 @@ export default function SwarmApplication({
 
   const isFirebaseReady = Boolean(getFirebaseDb());
   const activeTourStep = TOUR_STEPS[tourStepIndex];
-  const progressStep =
-    mode === "prompt" ? (promptSlot === "provided-description-1" ? 4 : 5) : 6;
+  const progressStep = studyStep ?? (mode === "prompt" ? 5 : 6);
   const buckleStatusMessage = getBuckleStatusMessage(selected.size);
   const recordedBehavioursRef = useRef<HTMLElement | null>(null);
 
@@ -964,7 +965,7 @@ export default function SwarmApplication({
       <section className="controls-card">
         <div className="toolbar">
           <div className="study-header-row">
-            {!tourOpen ? <StudyStepProgress currentStep={progressStep} totalSteps={7} /> : null}
+            <StudyStepProgress currentStep={progressStep} totalSteps={7} />
           </div>
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">

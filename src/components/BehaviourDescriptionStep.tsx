@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import StudyStepProgress from "@/components/StudyStepProgress";
 import {
   buildStudyHref,
   getStoredStudyContext,
@@ -34,6 +35,7 @@ type StoredResponse = {
 type StepConfig = {
   title: string;
   helperText: string;
+  progressStep: number;
   responseLabel: string;
   responseKey: string;
   stimulus: string;
@@ -359,6 +361,9 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   return (
     <main className="page-shell">
       <section className="hero behaviour-hero">
+        <div className="study-header-row">
+          <StudyStepProgress currentStep={config.progressStep} totalSteps={7} />
+        </div>
         <div>
           <h1>{config.title}</h1>
           <p className="intro-text">{config.helperText}</p>

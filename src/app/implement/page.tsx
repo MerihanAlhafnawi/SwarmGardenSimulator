@@ -7,6 +7,7 @@ export default function ImplementPage() {
       promptText="the color red flowing from right to left"
       promptNextHref="/implement-two"
       promptSlot="provided-description-1"
+      studyStep={5}
     />
   );
 }

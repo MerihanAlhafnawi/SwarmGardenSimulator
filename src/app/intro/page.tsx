@@ -1,5 +1,6 @@
 import { buildStudyHref } from "@/lib/study";
 import IntroGate from "@/components/IntroGate";
+import StudyStepProgress from "@/components/StudyStepProgress";
 
 export default async function IntroPage({
   searchParams,
@@ -30,6 +31,9 @@ export default async function IntroPage({
   return (
     <main className="page-shell intro-shell">
       <section className="hero intro-hero">
+        <div className="study-header-row">
+          <StudyStepProgress currentStep={2} totalSteps={7} />
+        </div>
         <div className="intro-copy">
           <h1>Swarm Garden Simulator</h1>
           <p className="intro-text">

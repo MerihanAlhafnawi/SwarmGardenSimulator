@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StudyStepProgress from "@/components/StudyStepProgress";
 import { buildStudyHref } from "@/lib/study";
 
 export default async function HomePage({
@@ -27,6 +28,9 @@ export default async function HomePage({
   return (
     <main className="page-shell consent-shell">
       <section className="hero consent-hero">
+        <div className="study-header-row">
+          <StudyStepProgress currentStep={1} totalSteps={7} />
+        </div>
         <div className="consent-copy">
           <p className="eyebrow">PRINCETON UNIVERSITY</p>
           <h1>Consent form</h1>

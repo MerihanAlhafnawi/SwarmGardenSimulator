@@ -6,6 +6,7 @@ export default function DescribeTwoPage() {
       config={{
         title: "Describe This Behaviour",
         helperText: "Please describe the Swarm Garden behaviour in your own words.",
+        progressStep: 3,
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-2",
         stimulus:

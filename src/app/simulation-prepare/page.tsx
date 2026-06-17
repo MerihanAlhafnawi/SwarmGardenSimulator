@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StudyStepProgress from "@/components/StudyStepProgress";
 import { buildStudyHref } from "@/lib/study";
 
 export default async function SimulationPreparePage({
@@ -26,6 +27,9 @@ export default async function SimulationPreparePage({
   return (
     <main className="page-shell consent-shell">
       <section className="hero consent-hero">
+        <div className="study-header-row">
+          <StudyStepProgress currentStep={6} totalSteps={7} />
+        </div>
         <div className="plain-transition-copy">
           <p>Thank you. Next, please create and describe 2 behaviours of your own.</p>
           <div className="transition-actions">

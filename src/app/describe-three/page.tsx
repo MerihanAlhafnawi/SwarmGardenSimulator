@@ -6,6 +6,7 @@ export default function DescribeThreePage() {
       config={{
         title: "Describe This Behaviour",
         helperText: "Please describe the Swarm Garden behaviour in your own words.",
+        progressStep: 3,
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-3",
         stimulus: "rainbow colors with robots blooming randomly",
