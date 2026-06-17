@@ -578,7 +578,7 @@ export default function AdminReplay() {
           </label>
           {rawJson ? (
             <button className="ghost" onClick={() => downloadJsonFile("study-data.json", rawJson)}>
-              Download uploaded JSON
+              Download JSON
             </button>
           ) : null}
         </div>
