@@ -965,7 +965,7 @@ export default function SwarmApplication({
           <h1>
             {mode === "prompt"
               ? `${promptLabel ? `${promptLabel}: ` : ""}Please implement a behaviour that fits the description`
-              : 'Please implement 2 behaviours. All behaviours implemented will show in "Current behaviours".'}
+              : "Please implement and describe your own 2 behaviours"}
           </h1>
           {mode === "design" ? (
             <button className="ghost" onClick={startTour}>
