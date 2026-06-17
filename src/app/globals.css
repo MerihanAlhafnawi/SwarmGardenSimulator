@@ -395,6 +395,12 @@ button:disabled {
   font-size: 1rem;
 }
 
+.field textarea,
+textarea {
+  resize: none !important;
+  max-width: 100%;
+}
+
 .prompt-panel {
   align-content: start;
 }

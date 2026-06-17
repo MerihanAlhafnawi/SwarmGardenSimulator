@@ -4,7 +4,6 @@ export default function ImplementPage() {
   return (
     <SwarmApplication
       mode="prompt"
-      promptLabel="Behaviour 1"
       promptText="the color red flowing from right to left"
       promptNextHref="/implement-two"
       promptSlot="provided-description-1"

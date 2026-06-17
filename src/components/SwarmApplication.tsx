@@ -101,7 +101,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     targetId: "recorded-behaviours",
-    title: "Current saved behaviour",
+    title: "Saved behaviour",
     body: "Your current saved behaviour appears here. You can press Play to review it or delete it and make it again.",
   },
 ];
@@ -964,7 +964,7 @@ export default function SwarmApplication({
         <div className="application-hero">
           <h1>
             {mode === "prompt"
-              ? `${promptLabel ? `${promptLabel}: ` : ""}Please implement a behaviour that fits the description`
+              ? `Please implement a behaviour that fits the description`
               : "Please implement and describe your own 2 behaviours"}
           </h1>
           {mode === "design" ? (
@@ -983,7 +983,6 @@ export default function SwarmApplication({
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
               <span>
-                {promptLabel ? `${promptLabel}: ` : ""}
                 Please implement a behaviour that fits the description
               </span>
               <p className="prompt-text">{promptText}</p>
@@ -1178,7 +1177,7 @@ export default function SwarmApplication({
       >
           <div className="library-header">
             <div>
-              <h2>{mode === "prompt" ? "Current saved behaviour" : "Saved behaviours"}</h2>
+              <h2>{mode === "prompt" ? "Saved behaviour" : "Saved behaviours"}</h2>
             </div>
           </div>
 
