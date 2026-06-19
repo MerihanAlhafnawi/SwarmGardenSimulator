@@ -18,6 +18,7 @@ const ROWS = 3;
 const COLS = 12;
 const COLOR_STEPS = 15;
 const COLOR_STEP_DELAY = 50;
+const HOP_DELAY = 120;
 const LOOP_DELAY = 2400;
 const DESCRIPTION_RESPONSES_STORAGE_KEY = "swarm-describe-responses";
 
