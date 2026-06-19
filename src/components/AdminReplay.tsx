@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { collection, getDocs } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent } from "react";
 import { getFirebaseDb } from "@/lib/firebase";
 
 const ROWS = 3;
@@ -33,11 +33,18 @@ type RecordingEvent = {
 
 type BehaviourEntry = {
   id: string;
+  promptSlot?: string;
   submittedAt?: string;
   data?: {
     description?: string;
     events?: RecordingEvent[];
+    promptSlot?: string;
   };
+};
+
+type DescribeResponse = {
+  stimulus?: string;
+  description?: string;
 };
 
 type StudyRecordLike = {
@@ -47,6 +54,15 @@ type StudyRecordLike = {
   manualParticipantId?: string;
   studyRunId?: string;
   steps?: {
+    describeBehaviour?: {
+      submittedAt?: string;
+      data?: {
+        responses?: DescribeResponse[];
+        currentPage?: string;
+      };
+    };
+    providedPrompts?: BehaviourEntry[];
+    implementedBehaviours?: BehaviourEntry[];
     designedBehaviours?: BehaviourEntry[];
   };
 };
@@ -58,6 +74,13 @@ type PlaybackProgress = {
 };
 
 type PlaybackCellsInput = Array<string | [number, number]>;
+
+type ReplayItem = {
+  id: string;
+  title: string;
+  submittedAt?: string;
+  events: RecordingEvent[];
+};
 
 const createGrid = (): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
@@ -227,6 +250,16 @@ const getPlaybackStepLabel = (action: string) => {
   }
 };
 
+const getPromptSlotLabel = (slot?: string) => {
+  if (slot === "provided-description-1") {
+    return "Provided description 1";
+  }
+  if (slot === "provided-description-2") {
+    return "Provided description 2";
+  }
+  return "Provided description";
+};
+
 export default function AdminReplay() {
   const [rawJson, setRawJson] = useState<unknown>(null);
   const [records, setRecords] = useState<StudyRecordLike[]>([]);
@@ -271,7 +304,30 @@ export default function AdminReplay() {
     [participantRecords, selectedRunId],
   );
 
+  const describeResponses = selectedRecord?.steps?.describeBehaviour?.data?.responses ?? [];
+  const providedPromptBehaviours =
+    selectedRecord?.steps?.providedPrompts && selectedRecord.steps.providedPrompts.length > 0
+      ? selectedRecord.steps.providedPrompts
+      : selectedRecord?.steps?.implementedBehaviours ?? [];
   const designedBehaviours = selectedRecord?.steps?.designedBehaviours ?? [];
+
+  const replayItems = useMemo<ReplayItem[]>(
+    () => [
+      ...providedPromptBehaviours.map((entry) => ({
+        id: entry.id,
+        title: entry.data?.description || getPromptSlotLabel(entry.promptSlot || entry.data?.promptSlot),
+        submittedAt: entry.submittedAt,
+        events: entry.data?.events ?? [],
+      })),
+      ...designedBehaviours.map((entry) => ({
+        id: entry.id,
+        title: entry.data?.description || "Untitled behaviour",
+        submittedAt: entry.submittedAt,
+        events: entry.data?.events ?? [],
+      })),
+    ],
+    [providedPromptBehaviours, designedBehaviours],
+  );
 
   useEffect(() => {
     if (!selectedParticipant && participants[0]) {
@@ -286,7 +342,10 @@ export default function AdminReplay() {
     }
 
     const defaultRun = participantRecords[0]?.studyRunId || participantRecords[0]?._docId || "";
-    if (!selectedRunId || !participantRecords.some((record) => (record.studyRunId || record._docId || "") === selectedRunId)) {
+    if (
+      !selectedRunId ||
+      !participantRecords.some((record) => (record.studyRunId || record._docId || "") === selectedRunId)
+    ) {
       setSelectedRunId(defaultRun);
     }
   }, [participantRecords, selectedRunId]);
@@ -540,6 +599,40 @@ export default function AdminReplay() {
     }, playbackOffset + 600);
   };
 
+  const replayAllBehaviours = () => {
+    resetGrid();
+    let playbackOffset = 0;
+
+    replayItems.forEach((item, itemIndex) => {
+      scheduleReplay(() => {
+        setPlayingRecordingId(item.id);
+        setPlaybackProgress({ recordingId: item.id, activeIndex: -1, activeDuration: 0 });
+      }, playbackOffset);
+
+      item.events.forEach((entry, index) => {
+        scheduleReplay(() => {
+          setPlayingRecordingId(item.id);
+          setPlaybackProgress({
+            recordingId: item.id,
+            activeIndex: index,
+            activeDuration: getReplayActionDuration(entry),
+          });
+          runPlaybackAction(entry);
+        }, playbackOffset);
+        playbackOffset += getReplayActionDuration(entry) + REPLAY_STEP_DELAY;
+      });
+
+      if (itemIndex < replayItems.length - 1) {
+        playbackOffset += 800;
+      }
+    });
+
+    scheduleReplay(() => {
+      setPlayingRecordingId(null);
+      setPlaybackProgress(null);
+    }, playbackOffset + 600);
+  };
+
   const handleDownloadAllJson = async () => {
     const db = getFirebaseDb();
     if (!db) {
@@ -576,7 +669,11 @@ export default function AdminReplay() {
       const nextRecords = extractStudyRecords(parsed);
       setRawJson(parsed);
       setRecords(nextRecords);
-      setMessage(nextRecords.length ? `Loaded ${nextRecords.length} study record${nextRecords.length === 1 ? "" : "s"}.` : "No study records found in this JSON.");
+      setMessage(
+        nextRecords.length
+          ? `Loaded ${nextRecords.length} study record${nextRecords.length === 1 ? "" : "s"}.`
+          : "No study records found in this JSON.",
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not read this JSON file.");
       setRawJson(null);
@@ -594,7 +691,9 @@ export default function AdminReplay() {
         <div className="application-hero">
           <h1>Admin Replay</h1>
         </div>
-        <p className="intro-text">Upload exported study JSON, choose a participant, and replay their designed behaviours.</p>
+        <p className="intro-text">
+          Upload exported study JSON, choose a participant, and review their full study record.
+        </p>
       </section>
 
       <section className="controls-card admin-panel">
@@ -649,12 +748,16 @@ export default function AdminReplay() {
               Download selected participant JSON
             </button>
           ) : null}
+
+          {replayItems.length > 0 ? (
+            <button onClick={replayAllBehaviours}>Replay all behaviours</button>
+          ) : null}
         </div>
 
         {message ? <p className="control-hint admin-message">{message}</p> : null}
         {selectedRecord ? (
           <p className="control-hint admin-message">
-            Showing designed behaviours for participant{" "}
+            Showing the study record for participant{" "}
             <strong>{selectedRecord.participantNumber || selectedRecord.prolificPid || selectedRecord.manualParticipantId}</strong>
             {selectedRecord.studyRunId ? ` (${selectedRecord.studyRunId})` : ""}.
           </p>
@@ -686,15 +789,123 @@ export default function AdminReplay() {
       <section className="library-card">
         <div className="library-header">
           <div>
-            <h2>Designed behaviours</h2>
+            <h2>Description responses</h2>
           </div>
         </div>
 
         <div className="recording-list">
           {!selectedRecord ? (
-            <p className="empty-state">Upload JSON and choose a participant to review their behaviours.</p>
+            <p className="empty-state">Upload JSON and choose a participant to review their study record.</p>
+          ) : describeResponses.length === 0 ? (
+            <p className="empty-state">No description responses were found for this participant.</p>
+          ) : (
+            describeResponses.map((response, index) => (
+              <article key={`response-${index + 1}`} className="recording-card">
+                <div className="recording-meta">
+                  <h3>Describe behaviour {index + 1}</h3>
+                  <p>{response.stimulus || "No stimulus recorded"}</p>
+                </div>
+                <p className="recording-notes">{response.description || "No response recorded."}</p>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="library-card">
+        <div className="library-header">
+          <div>
+            <h2>Behaviours from provided descriptions</h2>
+          </div>
+        </div>
+
+        <div className="recording-list">
+          {!selectedRecord ? (
+            <p className="empty-state">Upload JSON and choose a participant to review their study record.</p>
+          ) : providedPromptBehaviours.length === 0 ? (
+            <p className="empty-state">No provided-description behaviours were found for this participant.</p>
+          ) : (
+            providedPromptBehaviours.map((recordingItem) => {
+              const events = recordingItem.data?.events ?? [];
+              const label = getPromptSlotLabel(recordingItem.promptSlot || recordingItem.data?.promptSlot);
+              return (
+                <article key={recordingItem.id} className="recording-card">
+                  <div className="recording-meta">
+                    <h3>{label}</h3>
+                    <p>{recordingItem.submittedAt ? new Date(recordingItem.submittedAt).toLocaleString() : "No timestamp"}</p>
+                  </div>
+                  <p className="recording-notes">{recordingItem.data?.description || "No description yet."}</p>
+                  {events.length > 0 ? (
+                    <div className="playback-progress">
+                      <div className="playback-progress-header">
+                        <span>Replay progress</span>
+                        <span>
+                          {playingRecordingId === recordingItem.id && playbackProgress?.recordingId === recordingItem.id
+                            ? playbackProgress.activeIndex >= 0
+                              ? `Step ${playbackProgress.activeIndex + 1} of ${events.length}`
+                              : "Starting replay"
+                            : `${events.length} steps`}
+                        </span>
+                      </div>
+                      <div className="playback-timeline" aria-label="Replay timeline">
+                        {events.map((event, index) => {
+                          const isCurrent =
+                            playingRecordingId === recordingItem.id &&
+                            playbackProgress?.recordingId === recordingItem.id &&
+                            playbackProgress.activeIndex === index;
+                          const isComplete =
+                            playingRecordingId === recordingItem.id &&
+                            playbackProgress?.recordingId === recordingItem.id &&
+                            playbackProgress.activeIndex > index;
+
+                          return (
+                            <div
+                              key={`${recordingItem.id}-${index}`}
+                              className={`timeline-step ${isCurrent ? "current" : ""} ${isComplete ? "complete" : ""}`}
+                              style={
+                                isCurrent
+                                  ? ({
+                                      ["--timeline-duration" as string]: `${playbackProgress?.activeDuration ?? 0}ms`,
+                                    } as CSSProperties)
+                                  : undefined
+                              }
+                              title={getPlaybackStepLabel(event.action)}
+                            >
+                              <span className="timeline-dot" />
+                              {index < events.length - 1 ? <span className="timeline-line" /> : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="recording-actions">
+                    <span>{events.length} events</span>
+                    <div className="recording-buttons">
+                      <button onClick={() => playbackRecording(recordingItem.id, events)}>
+                        {playingRecordingId === recordingItem.id ? "Playing" : "Play"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      <section className="library-card">
+        <div className="library-header">
+          <div>
+            <h2>Own designed behaviours</h2>
+          </div>
+        </div>
+
+        <div className="recording-list">
+          {!selectedRecord ? (
+            <p className="empty-state">Upload JSON and choose a participant to review their study record.</p>
           ) : designedBehaviours.length === 0 ? (
-            <p className="empty-state">No designed behaviours were found for this participant.</p>
+            <p className="empty-state">No self-designed behaviours were found for this participant.</p>
           ) : (
             designedBehaviours.map((recordingItem) => {
               const events = recordingItem.data?.events ?? [];
@@ -709,7 +920,7 @@ export default function AdminReplay() {
                       <div className="playback-progress-header">
                         <span>Replay progress</span>
                         <span>
-                          {playingRecordingId === recordingItem.id && playbackProgress
+                          {playingRecordingId === recordingItem.id && playbackProgress?.recordingId === recordingItem.id
                             ? playbackProgress.activeIndex >= 0
                               ? `Step ${playbackProgress.activeIndex + 1} of ${events.length}`
                               : "Starting replay"

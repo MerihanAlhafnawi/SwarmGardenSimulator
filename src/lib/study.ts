@@ -58,6 +58,10 @@ function createManualSessionStamp() {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
+function createManualParticipantId() {
+  return String(100000 + Math.floor(Math.random() * 900000));
+}
+
 function createStudyRunId() {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -80,6 +84,15 @@ export function storeStudyContext(value: Partial<StudyContext>) {
     manualSessionStamp: value.manualSessionStamp ?? current.manualSessionStamp,
     studyRunId: value.studyRunId ?? current.studyRunId,
   };
+
+  if (!next.prolificPid && !next.manualParticipantId) {
+    next.source = "manual";
+    next.manualParticipantId = createManualParticipantId();
+  }
+
+  if (!next.prolificPid && next.manualParticipantId && next.source === "unknown") {
+    next.source = "manual";
+  }
 
   if (next.source === "manual" && next.manualParticipantId && !next.manualSessionStamp) {
     next.manualSessionStamp = createManualSessionStamp();
@@ -115,6 +128,8 @@ export function initializeStudyContextFromSearch(search: string): StudyContext {
   const fromSearch = getStudyContextFromSearch(search);
   if (fromSearch.prolificPid || fromSearch.studyId || fromSearch.sessionId || fromSearch.manualParticipantId) {
     storeStudyContext(fromSearch);
+  } else if (!hasRequiredStudyContext(getStoredStudyContext())) {
+    storeStudyContext({ source: "manual" });
   }
   return getStoredStudyContext();
 }
