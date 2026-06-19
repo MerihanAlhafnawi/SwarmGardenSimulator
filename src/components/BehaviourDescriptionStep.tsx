@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import type { CSSProperties } from "react";
 import StudyStepProgress from "@/components/StudyStepProgress";
 import {
   buildStudyHref,
@@ -145,10 +146,17 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   const [demoProgress, setDemoProgress] = useState(0);
   const timersRef = useRef<number[]>([]);
   const hasAutoPlayedRef = useRef(false);
+  const cellsRef = useRef<Cell[][]>(createGrid(config.initialLevel));
+  const pendingGridRef = useRef<Cell[][] | null>(null);
+  const flushFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     setStudyContext(initializeStudyContextFromSearch(window.location.search));
   }, []);
+
+  useEffect(() => {
+    cellsRef.current = cells;
+  }, [cells]);
 
   useEffect(() => {
     const storedResponses = getStoredResponses();
@@ -168,12 +176,27 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     timersRef.current.push(timer);
   };
 
+  const flushPendingGrid = () => {
+    flushFrameRef.current = null;
+
+    if (!pendingGridRef.current) {
+      return;
+    }
+
+    const next = pendingGridRef.current;
+    pendingGridRef.current = null;
+    cellsRef.current = next;
+    setCells(next);
+  };
+
   const updateCells = (updater: (draft: Cell[][]) => void) => {
-    setCells((current) => {
-      const next = cloneGrid(current);
-      updater(next);
-      return next;
-    });
+    const base = pendingGridRef.current ? cloneGrid(pendingGridRef.current) : cloneGrid(cellsRef.current);
+    updater(base);
+    pendingGridRef.current = base;
+
+    if (flushFrameRef.current === null) {
+      flushFrameRef.current = window.requestAnimationFrame(flushPendingGrid);
+    }
   };
 
   const resetGrid = () => {
@@ -188,7 +211,7 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
   };
 
   const fadeCell = (row: number, col: number, targetColor: string) => {
-    const startRgb = hexToRgb(cells[row][col].color);
+    const startRgb = hexToRgb(cellsRef.current[row][col].color);
     const targetRgb = hexToRgb(targetColor);
 
     for (let step = 0; step <= COLOR_STEPS; step += 1) {
@@ -197,6 +220,26 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
         const color = rgbToHex(interpolateRgb(startRgb, targetRgb, t));
         updateCells((draft) => {
           draft[row][col].color = color;
+        });
+      }, step * COLOR_STEP_DELAY);
+    }
+  };
+
+  const fadeWave = (wave: Array<[number, number]>, targetColor: string) => {
+    const targetRgb = hexToRgb(targetColor);
+    const waveStarts = wave.map(([row, col]) => ({
+      row,
+      col,
+      startRgb: hexToRgb(cellsRef.current[row][col].color),
+    }));
+
+    for (let step = 0; step <= COLOR_STEPS; step += 1) {
+      schedule(() => {
+        const t = step / COLOR_STEPS;
+        updateCells((draft) => {
+          waveStarts.forEach(({ row, col, startRgb }) => {
+            draft[row][col].color = rgbToHex(interpolateRgb(startRgb, targetRgb, t));
+          });
         });
       }, step * COLOR_STEP_DELAY);
     }
@@ -220,7 +263,7 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
 
   const getDemoDuration = () => {
     if (config.demoKind === "blue-left-to-right") {
-      return 12 * 3 * 120 + 1200;
+      return COLS * HOP_DELAY + COLOR_STEPS * COLOR_STEP_DELAY + 600;
     }
 
     if (config.demoKind === "yellow-orange-bloom") {
@@ -247,12 +290,12 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     startProgressBar(duration);
 
     if (config.demoKind === "blue-left-to-right") {
-      let index = 0;
       for (let col = 0; col < COLS; col += 1) {
+        const wave: Array<[number, number]> = [];
         for (let row = 0; row < ROWS; row += 1) {
-          schedule(() => fadeCell(row, col, BLUE_COLOR), index * 120);
-          index += 1;
+          wave.push([row, col]);
         }
+        schedule(() => fadeWave(wave, BLUE_COLOR), col * HOP_DELAY);
       }
       return;
     }
@@ -298,7 +341,12 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
       replayBehaviour();
     }
 
-    return () => stopDemo(timersRef);
+    return () => {
+      stopDemo(timersRef);
+      if (flushFrameRef.current !== null) {
+        window.cancelAnimationFrame(flushFrameRef.current);
+      }
+    };
   }, [config.demoKind, config.initialLevel]);
 
   const replayBehaviour = () => {

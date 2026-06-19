@@ -83,6 +83,11 @@ a {
   align-items: center;
 }
 
+.application-hero .prompt-page-title {
+  font-size: clamp(2.1rem, 3vw, 3.1rem);
+  line-height: 1.05;
+}
+
 .intro-hero {
   width: 100%;
   display: grid;
@@ -409,11 +414,13 @@ textarea {
   color: var(--text);
   margin: 0;
   padding: 4px 0 0;
-  font-size: clamp(1.8rem, 2.8vw, 2.7rem);
-  line-height: 1.15;
+  font-size: clamp(1.35rem, 2.1vw, 1.95rem);
+  line-height: 1.1;
   font-weight: 600;
-  letter-spacing: -0.03em;
-  max-width: 16ch;
+  letter-spacing: -0.02em;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow-x: auto;
 }
 
 .color-picker,

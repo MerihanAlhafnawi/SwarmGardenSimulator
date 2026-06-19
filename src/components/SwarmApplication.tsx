@@ -981,9 +981,9 @@ export default function SwarmApplication({
     <main className="page-shell">
       <section className="hero">
         <div className="application-hero">
-          <h1>
+          <h1 className={mode === "prompt" ? "prompt-page-title" : undefined}>
             {mode === "prompt"
-              ? `Please implement a behaviour that fits the description`
+              ? `Please implement a behaviour that fits the description below`
               : "Please implement and describe your own 2 behaviours"}
           </h1>
           {mode === "design" ? (
@@ -1001,9 +1001,7 @@ export default function SwarmApplication({
           </div>
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
-              <span>
-                Please implement a behaviour that fits the description
-              </span>
+              <span>Description below</span>
               <p className="prompt-text">{promptText}</p>
               <p className="implement-note">
                 Pressing &quot;Save&quot; will create a behaviour in &quot;Saved behaviours&quot;. Pressing
