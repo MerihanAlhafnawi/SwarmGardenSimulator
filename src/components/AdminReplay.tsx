@@ -296,9 +296,6 @@ export default function AdminReplay() {
   const pendingGridRef = useRef<Cell[][] | null>(null);
   const flushFrameRef = useRef<number | null>(null);
 
-  const surveyResults =
-    selectedRecord?.postStudySurvey ?? selectedRecord?.steps?.postStudySurvey ?? null;
-
   const participants = useMemo(() => {
     const ids = new Set(
       records
@@ -325,6 +322,9 @@ export default function AdminReplay() {
       null,
     [participantRecords, selectedRunId],
   );
+
+  const surveyResults =
+    selectedRecord?.postStudySurvey ?? selectedRecord?.steps?.postStudySurvey ?? null;
 
   const describeResponses = selectedRecord?.steps?.describeBehaviour?.data?.responses ?? [];
   const providedPromptBehaviours =
