@@ -5,6 +5,9 @@ import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent } from "react";
 import { getFirebaseDb } from "@/lib/firebase";
 
+const ADMIN_PASSWORD = "040924";
+const ADMIN_AUTH_STORAGE_KEY = "swarm-garden-admin-auth";
+
 const ROWS = 3;
 const COLS = 12;
 const DEFAULT_LEVEL = 11;
@@ -53,6 +56,13 @@ type StudyRecordLike = {
   prolificPid?: string;
   manualParticipantId?: string;
   studyRunId?: string;
+  postStudySurvey?: {
+    familiarity?: string;
+    age?: string | number;
+    gender?: string;
+    confusingAspects?: string;
+    feedback?: string;
+  };
   steps?: {
     describeBehaviour?: {
       submittedAt?: string;
@@ -64,6 +74,13 @@ type StudyRecordLike = {
     providedPrompts?: BehaviourEntry[];
     implementedBehaviours?: BehaviourEntry[];
     designedBehaviours?: BehaviourEntry[];
+    postStudySurvey?: {
+      familiarity?: string;
+      age?: string | number;
+      gender?: string;
+      confusingAspects?: string;
+      feedback?: string;
+    };
   };
 };
 
@@ -261,6 +278,8 @@ const getPromptSlotLabel = (slot?: string) => {
 };
 
 export default function AdminReplay() {
+  const [passwordInput, setPasswordInput] = useState("");
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [rawJson, setRawJson] = useState<unknown>(null);
   const [records, setRecords] = useState<StudyRecordLike[]>([]);
   const [message, setMessage] = useState("");
@@ -276,6 +295,9 @@ export default function AdminReplay() {
   const cellsRef = useRef<Cell[][]>(createGrid());
   const pendingGridRef = useRef<Cell[][] | null>(null);
   const flushFrameRef = useRef<number | null>(null);
+
+  const surveyResults =
+    selectedRecord?.postStudySurvey ?? selectedRecord?.steps?.postStudySurvey ?? null;
 
   const participants = useMemo(() => {
     const ids = new Set(
@@ -328,6 +350,24 @@ export default function AdminReplay() {
     ],
     [providedPromptBehaviours, designedBehaviours],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === "true") {
+      setIsUnlocked(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isUnlocked) {
+      return;
+    }
+
+    void loadLatestRecords();
+  }, [isUnlocked]);
 
   useEffect(() => {
     if (!selectedParticipant && participants[0]) {
@@ -657,6 +697,33 @@ export default function AdminReplay() {
     }
   };
 
+  const loadLatestRecords = async () => {
+    const db = getFirebaseDb();
+    if (!db) {
+      setMessage("Firebase is not configured for this app.");
+      return;
+    }
+
+    try {
+      setMessage("Loading latest study data...");
+      const snapshot = await getDocs(collection(db, "recordings"));
+      const allRecords = snapshot.docs.map((doc) => ({
+        _docId: doc.id,
+        ...doc.data(),
+      }));
+      const nextRecords = extractStudyRecords(allRecords);
+      setRawJson(allRecords);
+      setRecords(nextRecords);
+      setMessage(
+        nextRecords.length
+          ? `Loaded latest ${nextRecords.length} study record${nextRecords.length === 1 ? "" : "s"}.`
+          : "No study records found in Firebase.",
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not load data from Firebase.");
+    }
+  };
+
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -685,6 +752,50 @@ export default function AdminReplay() {
     ? `participant-${selectedRecord.participantNumber || selectedRecord.prolificPid || selectedRecord.manualParticipantId || "record"}.json`
     : "participant.json";
 
+  const handleUnlock = () => {
+    if (passwordInput !== ADMIN_PASSWORD) {
+      setMessage("Incorrect password.");
+      return;
+    }
+
+    setIsUnlocked(true);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, "true");
+    }
+    setMessage("Unlocked admin replay.");
+  };
+
+  if (!isUnlocked) {
+    return (
+      <main className="page-shell">
+        <section className="hero">
+          <div className="application-hero">
+            <h1>Admin Replay</h1>
+          </div>
+          <p className="intro-text">
+            Enter the password to access the admin replay page.
+          </p>
+        </section>
+
+        <section className="controls-card admin-panel">
+          <div className="toolbar admin-upload-row">
+            <label className="field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(event) => setPasswordInput(event.target.value)}
+                placeholder="Enter admin password"
+              />
+            </label>
+            <button onClick={handleUnlock}>Unlock</button>
+          </div>
+          {message ? <p className="control-hint admin-message">{message}</p> : null}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="page-shell">
       <section className="hero">
@@ -692,7 +803,8 @@ export default function AdminReplay() {
           <h1>Admin Replay</h1>
         </div>
         <p className="intro-text">
-          Upload exported study JSON, choose a participant, and review their full study record.
+          The latest Firebase study data loads automatically here. You can still upload JSON or
+          download the data whenever you need it.
         </p>
       </section>
 
@@ -703,7 +815,7 @@ export default function AdminReplay() {
             <input type="file" accept="application/json,.json" onChange={handleUpload} />
           </label>
           <button className="ghost" onClick={() => void handleDownloadAllJson()} disabled={isDownloadingAll}>
-            {isDownloadingAll ? "Downloading..." : "Download JSON"}
+            {isDownloadingAll ? "Downloading..." : "Download all JSON"}
           </button>
         </div>
 
@@ -762,6 +874,51 @@ export default function AdminReplay() {
             {selectedRecord.studyRunId ? ` (${selectedRecord.studyRunId})` : ""}.
           </p>
         ) : null}
+      </section>
+
+      <section className="library-card admin-grid">
+        <article className="recording-card">
+          <div className="recording-meta">
+            <h3>Latest JSON</h3>
+            <p>{selectedRecord ? "Selected participant record" : "No participant selected"}</p>
+          </div>
+          <pre className="json-preview">
+            {selectedRecord
+              ? JSON.stringify(selectedRecord, null, 2)
+              : rawJson
+                ? JSON.stringify(rawJson, null, 2)
+                : "No data loaded yet."}
+          </pre>
+        </article>
+
+        <article className="recording-card">
+          <div className="recording-meta">
+            <h3>Survey results</h3>
+            <p>{surveyResults ? "From the selected study record" : "No survey data found"}</p>
+          </div>
+          <div className="survey-grid">
+            <div>
+              <strong>Robot familiarity</strong>
+              <p>{surveyResults?.familiarity || "No answer"}</p>
+            </div>
+            <div>
+              <strong>Age</strong>
+              <p>{surveyResults?.age ? String(surveyResults.age) : "No answer"}</p>
+            </div>
+            <div>
+              <strong>Gender</strong>
+              <p>{surveyResults?.gender || "No answer"}</p>
+            </div>
+            <div>
+              <strong>Hard or confusing aspects</strong>
+              <p>{surveyResults?.confusingAspects || "No answer"}</p>
+            </div>
+            <div>
+              <strong>Feedback</strong>
+              <p>{surveyResults?.feedback || "No answer"}</p>
+            </div>
+          </div>
+        </article>
       </section>
 
       <section className="grid-card">
