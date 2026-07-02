@@ -56,13 +56,6 @@ type StudyRecordLike = {
   prolificPid?: string;
   manualParticipantId?: string;
   studyRunId?: string;
-  postStudySurvey?: {
-    familiarity?: string;
-    age?: string | number;
-    gender?: string;
-    confusingAspects?: string;
-    feedback?: string;
-  };
   steps?: {
     describeBehaviour?: {
       submittedAt?: string;
@@ -75,11 +68,15 @@ type StudyRecordLike = {
     implementedBehaviours?: BehaviourEntry[];
     designedBehaviours?: BehaviourEntry[];
     postStudySurvey?: {
-      familiarity?: string;
-      age?: string | number;
-      gender?: string;
-      confusingAspects?: string;
-      feedback?: string;
+      step?: "post-study-survey";
+      submittedAt?: string;
+      data?: {
+        familiarity?: string;
+        age?: string | number;
+        gender?: string;
+        confusingAspects?: string;
+        feedback?: string;
+      };
     };
   };
 };
@@ -323,8 +320,7 @@ export default function AdminReplay() {
     [participantRecords, selectedRunId],
   );
 
-  const surveyResults =
-    selectedRecord?.postStudySurvey ?? selectedRecord?.steps?.postStudySurvey ?? null;
+  const surveyResults = selectedRecord?.steps?.postStudySurvey?.data ?? null;
 
   const describeResponses = selectedRecord?.steps?.describeBehaviour?.data?.responses ?? [];
   const providedPromptBehaviours =
