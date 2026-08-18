@@ -4,7 +4,7 @@ export default function ImplementTwoPage() {
   return (
     <SwarmApplication
       mode="prompt"
-      promptText="a sun rising over a garden"
+      promptText="Fireworks lighting up the sky"
       promptSlot="provided-description-2"
       studyStep={5}
     />
