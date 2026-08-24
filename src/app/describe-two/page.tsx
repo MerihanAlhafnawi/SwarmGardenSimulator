@@ -10,7 +10,7 @@ export default function DescribeTwoPage() {
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-2",
         stimulus:
-          "robots smoothly bloom from 1 to 3, 3 to 5, 5 to 7, 7 to 8, and 9 to 11 in two-column bands, then all change color to green",
+          "robots bloom to levels 1, 3, 5, 7, 9, and 11 in two-column bands, then all change color to green",
         initialLevel: 1,
         nextHref: "/describe-three",
         demoKind: "two-column-bloom-green",

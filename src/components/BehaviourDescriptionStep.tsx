@@ -54,13 +54,17 @@ const BLOOM_STEP_DELAY = 180;
 const TWO_COLUMN_BAND_DELAY = 1000;
 const GREEN_COLOR = "#36a852";
 const SECOND_DEMO_BLOOM_BANDS = [
+  { from: 1, to: 1 },
   { from: 1, to: 3 },
-  { from: 3, to: 5 },
-  { from: 5, to: 7 },
-  { from: 7, to: 8 },
-  { from: 9, to: 11 },
+  { from: 1, to: 5 },
+  { from: 1, to: 7 },
+  { from: 1, to: 9 },
+  { from: 1, to: 11 },
 ];
 const THIRD_DEMO_BLOOM_LEVELS = [3, 8, 5, 11, 2, 7];
+const THIRD_DEMO_BLOOM_STAGGER = 100;
+const THIRD_DEMO_BLOOM_DURATION = 450;
+const RANDOM_COLOR_DELAY = 500;
 const RANDOM_COLOR_FLASHES = [
   { row: 0, col: 9, color: "#ff4d4d" },
   { row: 2, col: 2, color: "#47b8ff" },
@@ -289,7 +293,12 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
       return SECOND_DEMO_BLOOM_BANDS.length * TWO_COLUMN_BAND_DELAY + COLOR_STEPS * COLOR_STEP_DELAY + 600;
     }
 
-    return THIRD_DEMO_BLOOM_LEVELS.length * TWO_COLUMN_BAND_DELAY + RANDOM_COLOR_FLASHES.length * 1000;
+    return (
+      THIRD_DEMO_BLOOM_LEVELS.length * THIRD_DEMO_BLOOM_STAGGER +
+      THIRD_DEMO_BLOOM_DURATION +
+      RANDOM_COLOR_FLASHES.length * RANDOM_COLOR_DELAY +
+      600
+    );
   };
 
   const startProgressBar = (duration: number) => {
@@ -334,14 +343,20 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     THIRD_DEMO_BLOOM_LEVELS.forEach((targetLevel, index) => {
       const startCol = index * 2;
       const wave = [...columnWave(startCol), ...columnWave(startCol + 1)];
-      animateWaveLevel(wave, 1, targetLevel, index * TWO_COLUMN_BAND_DELAY, TWO_COLUMN_BAND_DELAY - 120);
+      animateWaveLevel(
+        wave,
+        1,
+        targetLevel,
+        index * THIRD_DEMO_BLOOM_STAGGER,
+        THIRD_DEMO_BLOOM_DURATION,
+      );
     });
 
-    const flashStartDelay = THIRD_DEMO_BLOOM_LEVELS.length * TWO_COLUMN_BAND_DELAY;
+    const flashStartDelay =
+      THIRD_DEMO_BLOOM_LEVELS.length * THIRD_DEMO_BLOOM_STAGGER + THIRD_DEMO_BLOOM_DURATION;
     RANDOM_COLOR_FLASHES.forEach(({ row, col, color }, index) => {
-      const delay = flashStartDelay + index * 1000;
+      const delay = flashStartDelay + index * RANDOM_COLOR_DELAY;
       schedule(() => setCellColor(row, col, color), delay);
-      schedule(() => setCellColor(row, col, "#ffffff"), delay + 700);
     });
   };
 
