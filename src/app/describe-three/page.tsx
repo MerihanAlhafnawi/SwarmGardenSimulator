@@ -9,11 +9,11 @@ export default function DescribeThreePage() {
         progressStep: 3,
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-3",
-        stimulus: "rainbow colors with robots blooming randomly",
-        initialLevel: 11,
+        stimulus: "bloom in different patterns, then change to random colors",
+        initialLevel: 1,
         nextHref: "/prepare",
         isFinalStep: true,
-        demoKind: "rainbow-random-bloom",
+        demoKind: "bloom-patterns-random-color",
       }}
     />
   );

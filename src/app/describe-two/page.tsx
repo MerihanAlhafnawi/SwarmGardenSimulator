@@ -10,10 +10,10 @@ export default function DescribeTwoPage() {
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-2",
         stimulus:
-          "flowers start at 1, change from yellow to orange in two-column bands every second, then gradually bloom to 11 together",
+          "change from 0 to 11 in two-column bands every second, then all change color to green",
         initialLevel: 1,
         nextHref: "/describe-three",
-        demoKind: "yellow-orange-bloom",
+        demoKind: "two-column-bloom-green",
       }}
     />
   );

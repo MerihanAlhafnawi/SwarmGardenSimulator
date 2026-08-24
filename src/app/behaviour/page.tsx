@@ -9,10 +9,10 @@ export default function BehaviourPage() {
         progressStep: 3,
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-1",
-        stimulus: "color left-to-right blue",
-        initialLevel: 11,
+        stimulus: "bloom left-to-right with no color change",
+        initialLevel: 1,
         nextHref: "/describe-two",
-        demoKind: "blue-left-to-right",
+        demoKind: "bloom-left-to-right",
       }}
     />
   );
