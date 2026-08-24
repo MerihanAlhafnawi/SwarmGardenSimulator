@@ -87,7 +87,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     targetId: "buckle-controls",
     title: "Buckle controls",
-    body: "Use the buckle slider or the directional buckle buttons to change bloom levels across the swarm.",
+    body: "Use the buckle slider or the directional buckle buttons to change buckle levels across the swarm.",
   },
   {
     targetId: "record-controls",
