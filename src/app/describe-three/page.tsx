@@ -9,7 +9,8 @@ export default function DescribeThreePage() {
         progressStep: 3,
         responseLabel: "Describe the behaviour",
         responseKey: "behaviour-3",
-        stimulus: "bloom in different patterns, then change to random colors",
+        stimulus:
+          "two-column bands bloom to different levels, then single robots flash random colors one at a time",
         initialLevel: 1,
         nextHref: "/prepare",
         isFinalStep: true,

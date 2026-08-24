@@ -53,15 +53,21 @@ type StepConfig = {
 const BLOOM_STEP_DELAY = 180;
 const TWO_COLUMN_BAND_DELAY = 1000;
 const GREEN_COLOR = "#36a852";
-const RANDOM_COLORS = [
-  "#ff4d4d",
-  "#ff8a1f",
-  "#ffd84d",
-  "#4dcf6f",
-  "#47b8ff",
-  "#7161ff",
-  "#d45bff",
-  "#ff6ec7",
+const SECOND_DEMO_BLOOM_BANDS = [
+  { from: 1, to: 3 },
+  { from: 3, to: 5 },
+  { from: 5, to: 7 },
+  { from: 7, to: 8 },
+  { from: 9, to: 11 },
+];
+const THIRD_DEMO_BLOOM_LEVELS = [3, 8, 5, 11, 2, 7];
+const RANDOM_COLOR_FLASHES = [
+  { row: 0, col: 9, color: "#ff4d4d" },
+  { row: 2, col: 2, color: "#47b8ff" },
+  { row: 1, col: 6, color: "#ffd84d" },
+  { row: 0, col: 1, color: "#d45bff" },
+  { row: 2, col: 11, color: "#4dcf6f" },
+  { row: 1, col: 4, color: "#ff8a1f" },
 ];
 
 const createGrid = (level: number): Cell[][] =>
@@ -235,21 +241,33 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     }
   };
 
-  const setAllLevels = (level: number) => {
-    updateCells((draft) => {
-      for (let row = 0; row < ROWS; row += 1) {
-        for (let col = 0; col < COLS; col += 1) {
-          draft[row][col].level = level;
-        }
-      }
-    });
-  };
-
   const setWaveLevel = (wave: Array<[number, number]>, level: number) => {
     updateCells((draft) => {
       wave.forEach(([row, col]) => {
         draft[row][col].level = level;
       });
+    });
+  };
+
+  const animateWaveLevel = (
+    wave: Array<[number, number]>,
+    from: number,
+    to: number,
+    delay: number,
+    duration: number,
+  ) => {
+    const stepCount = 12;
+    for (let step = 0; step <= stepCount; step += 1) {
+      schedule(() => {
+        const progress = step / stepCount;
+        setWaveLevel(wave, Math.round(from + (to - from) * progress));
+      }, delay + Math.round((duration * step) / stepCount));
+    }
+  };
+
+  const setCellColor = (row: number, col: number, color: string) => {
+    updateCells((draft) => {
+      draft[row][col].color = color;
     });
   };
 
@@ -268,10 +286,10 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     }
 
     if (config.demoKind === "two-column-bloom-green") {
-      return 6 * TWO_COLUMN_BAND_DELAY + COLOR_STEPS * COLOR_STEP_DELAY + 600;
+      return SECOND_DEMO_BLOOM_BANDS.length * TWO_COLUMN_BAND_DELAY + COLOR_STEPS * COLOR_STEP_DELAY + 600;
     }
 
-    return 8400;
+    return THIRD_DEMO_BLOOM_LEVELS.length * TWO_COLUMN_BAND_DELAY + RANDOM_COLOR_FLASHES.length * 1000;
   };
 
   const startProgressBar = (duration: number) => {
@@ -298,16 +316,13 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     }
 
     if (config.demoKind === "two-column-bloom-green") {
-      for (let bandIndex = 0; bandIndex < COLS / 2; bandIndex += 1) {
+      SECOND_DEMO_BLOOM_BANDS.forEach(({ from, to }, bandIndex) => {
         const startCol = bandIndex * 2;
-        for (let row = 0; row < ROWS; row += 1) {
-          for (let col = startCol; col < Math.min(startCol + 2, COLS); col += 1) {
-            schedule(() => setWaveLevel([[row, col]], 11), bandIndex * TWO_COLUMN_BAND_DELAY);
-          }
-        }
-      }
+        const wave = [...columnWave(startCol), ...columnWave(startCol + 1)];
+        animateWaveLevel(wave, from, to, bandIndex * TWO_COLUMN_BAND_DELAY, TWO_COLUMN_BAND_DELAY - 120);
+      });
 
-      const greenStartDelay = 6 * TWO_COLUMN_BAND_DELAY;
+      const greenStartDelay = SECOND_DEMO_BLOOM_BANDS.length * TWO_COLUMN_BAND_DELAY;
       for (let row = 0; row < ROWS; row += 1) {
         for (let col = 0; col < COLS; col += 1) {
           schedule(() => fadeCell(row, col, GREEN_COLOR), greenStartDelay);
@@ -316,24 +331,18 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
       return;
     }
 
-    for (let col = 0; col < COLS; col += 1) {
-      bloomWave(columnWave(col), col * HOP_DELAY);
-    }
-
-    schedule(() => setAllLevels(1), 3400);
-
-    const centerOutWaves = [[5, 6], [4, 7], [3, 8], [2, 9], [1, 10], [0, 11]];
-    centerOutWaves.forEach((columns, index) => {
-      const wave = columns.flatMap((col) => columnWave(col));
-      bloomWave(wave, 3800 + index * HOP_DELAY);
+    THIRD_DEMO_BLOOM_LEVELS.forEach((targetLevel, index) => {
+      const startCol = index * 2;
+      const wave = [...columnWave(startCol), ...columnWave(startCol + 1)];
+      animateWaveLevel(wave, 1, targetLevel, index * TWO_COLUMN_BAND_DELAY, TWO_COLUMN_BAND_DELAY - 120);
     });
 
-    for (let row = 0; row < ROWS; row += 1) {
-      for (let col = 0; col < COLS; col += 1) {
-        const color = RANDOM_COLORS[(row * 5 + col * 3) % RANDOM_COLORS.length];
-        schedule(() => fadeCell(row, col, color), 7000 + (row * COLS + col) * 25);
-      }
-    }
+    const flashStartDelay = THIRD_DEMO_BLOOM_LEVELS.length * TWO_COLUMN_BAND_DELAY;
+    RANDOM_COLOR_FLASHES.forEach(({ row, col, color }, index) => {
+      const delay = flashStartDelay + index * 1000;
+      schedule(() => setCellColor(row, col, color), delay);
+      schedule(() => setCellColor(row, col, "#ffffff"), delay + 700);
+    });
   };
 
   useEffect(() => {
