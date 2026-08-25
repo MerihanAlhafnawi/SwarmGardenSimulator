@@ -15,6 +15,7 @@ import {
   initializeStudyContextFromSearch,
   saveBehaviourRecording,
   type StudyContext,
+  type StudyVariants,
 } from "@/lib/study";
 
 const ROWS = 3;
@@ -212,6 +213,8 @@ export default function SwarmApplication({
   promptSlot,
   studyStep,
   promptLabel,
+  promptVariants,
+  promptVariantKey,
 }: {
   forceTour?: boolean;
   mode?: "design" | "prompt";
@@ -220,6 +223,8 @@ export default function SwarmApplication({
   promptSlot?: string;
   studyStep?: number;
   promptLabel?: string;
+  promptVariants?: { legacy: string; current: string };
+  promptVariantKey?: keyof Pick<StudyVariants, "implementOne" | "implementTwo">;
 }) {
   const router = useRouter();
   const [cells, setCells] = useState<Cell[][]>(() => createGrid());
@@ -252,6 +257,10 @@ export default function SwarmApplication({
   const progressStep = studyStep ?? (mode === "prompt" ? 5 : 6);
   const buckleStatusMessage = getBuckleStatusMessage(selected.size);
   const recordedBehavioursRef = useRef<HTMLElement | null>(null);
+  const activePromptText =
+    promptVariants && promptVariantKey
+      ? promptVariants[studyContext.studyVariants?.[promptVariantKey] ?? "current"]
+      : promptText;
 
   useEffect(() => {
     setSaveState(
@@ -688,7 +697,7 @@ export default function SwarmApplication({
       return false;
     }
 
-    const description = mode === "prompt" ? promptText : recordingNotes.trim();
+    const description = mode === "prompt" ? activePromptText : recordingNotes.trim();
     if (mode === "design" && !description) {
       window.alert("Please describe a behaviour before saving.");
       setSaveState("Add a behaviour description before saving");
@@ -1002,7 +1011,7 @@ export default function SwarmApplication({
           {mode === "prompt" ? (
             <div className={`field field-wide prompt-panel ${getTourClass("prompt-panel")}`} data-tour-id="prompt-panel">
               <span>Description below</span>
-              <p className="prompt-text">{promptText}</p>
+              <p className="prompt-text">{activePromptText}</p>
               <p className="implement-note">
                 Pressing &quot;Save&quot; will create a behaviour in &quot;Saved behaviours&quot;. Pressing
                 &quot;Reset&quot; will reset progress and not save. If you are unhappy with a saved behaviour

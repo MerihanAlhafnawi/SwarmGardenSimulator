@@ -3,6 +3,14 @@ import { getFirebaseDb } from "@/lib/firebase";
 
 export const STUDY_CONTEXT_STORAGE_KEY = "swarm-study-context";
 
+export type StudyVariants = {
+  describeOne: "legacy" | "current";
+  describeTwo: "legacy" | "current";
+  describeThree: "legacy" | "current";
+  implementOne: "legacy" | "current";
+  implementTwo: "legacy" | "current";
+};
+
 export type StudyContext = {
   source: "prolific" | "manual" | "unknown";
   prolificPid: string;
@@ -11,6 +19,7 @@ export type StudyContext = {
   manualParticipantId: string;
   manualSessionStamp: string;
   studyRunId: string;
+  studyVariants: StudyVariants | null;
 };
 
 const EMPTY_STUDY_CONTEXT: StudyContext = {
@@ -21,7 +30,39 @@ const EMPTY_STUDY_CONTEXT: StudyContext = {
   manualParticipantId: "",
   manualSessionStamp: "",
   studyRunId: "",
+  studyVariants: null,
 };
+
+const isVariantChoice = (value: unknown): value is "legacy" | "current" =>
+  value === "legacy" || value === "current";
+
+const isStudyVariants = (value: unknown): value is StudyVariants => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const variants = value as Partial<StudyVariants>;
+  return (
+    isVariantChoice(variants.describeOne) &&
+    isVariantChoice(variants.describeTwo) &&
+    isVariantChoice(variants.describeThree) &&
+    isVariantChoice(variants.implementOne) &&
+    isVariantChoice(variants.implementTwo)
+  );
+};
+
+export function createStudyVariants(): StudyVariants {
+  const randomVariant = (): "legacy" | "current" =>
+    Math.random() < 0.5 ? "legacy" : "current";
+
+  return {
+    describeOne: randomVariant(),
+    describeTwo: randomVariant(),
+    describeThree: randomVariant(),
+    implementOne: randomVariant(),
+    implementTwo: randomVariant(),
+  };
+}
 
 export function getStoredStudyContext(): StudyContext {
   if (typeof window === "undefined") {
@@ -46,6 +87,7 @@ export function getStoredStudyContext(): StudyContext {
       manualParticipantId: parsed.manualParticipantId ?? "",
       manualSessionStamp: parsed.manualSessionStamp ?? "",
       studyRunId: parsed.studyRunId ?? "",
+      studyVariants: isStudyVariants(parsed.studyVariants) ? parsed.studyVariants : null,
     };
   } catch {
     return EMPTY_STUDY_CONTEXT;
@@ -83,6 +125,7 @@ export function storeStudyContext(value: Partial<StudyContext>) {
     manualParticipantId: value.manualParticipantId ?? current.manualParticipantId,
     manualSessionStamp: value.manualSessionStamp ?? current.manualSessionStamp,
     studyRunId: value.studyRunId ?? current.studyRunId,
+    studyVariants: value.studyVariants ?? current.studyVariants,
   };
 
   if (!next.prolificPid && !next.manualParticipantId) {
@@ -100,6 +143,10 @@ export function storeStudyContext(value: Partial<StudyContext>) {
 
   if (!next.studyRunId && (next.prolificPid || next.manualParticipantId)) {
     next.studyRunId = createStudyRunId();
+  }
+
+  if (!next.studyVariants && (next.prolificPid || next.manualParticipantId)) {
+    next.studyVariants = createStudyVariants();
   }
 
   window.localStorage.setItem(STUDY_CONTEXT_STORAGE_KEY, JSON.stringify(next));
@@ -130,6 +177,10 @@ export function initializeStudyContextFromSearch(search: string): StudyContext {
     storeStudyContext(fromSearch);
   } else if (!hasRequiredStudyContext(getStoredStudyContext())) {
     storeStudyContext({ source: "manual" });
+  }
+  const context = getStoredStudyContext();
+  if (hasRequiredStudyContext(context) && !context.studyVariants) {
+    storeStudyContext({ studyVariants: createStudyVariants() });
   }
   return getStoredStudyContext();
 }
@@ -182,6 +233,7 @@ type StudyRecord = {
   manualParticipantId: string;
   manualSessionStamp: string;
   studyRunId: string;
+  studyVariants: StudyVariants | null;
   steps?: {
     describeBehaviour?: {
       step: "describe-behaviour";
@@ -253,6 +305,7 @@ function getBaseStudyRecord(studyContext: StudyContext, existing?: StudyRecord |
     manualParticipantId: studyContext.manualParticipantId,
     manualSessionStamp: studyContext.manualSessionStamp,
     studyRunId: studyContext.studyRunId,
+    studyVariants: studyContext.studyVariants,
     steps: existing?.steps ?? {},
   };
 }
@@ -265,6 +318,7 @@ export function advanceStudyRun(context: StudyContext): StudyContext {
   const nextContext = {
     ...context,
     studyRunId: createStudyRunId(),
+    studyVariants: createStudyVariants(),
   };
   storeStudyContext(nextContext);
   return nextContext;

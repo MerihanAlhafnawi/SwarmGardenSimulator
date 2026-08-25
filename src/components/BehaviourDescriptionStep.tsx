@@ -45,6 +45,9 @@ type StepConfig = {
   nextHref: string;
   isFinalStep?: boolean;
   demoKind:
+    | "blue-left-to-right"
+    | "yellow-orange-bloom"
+    | "rainbow-random-bloom"
     | "bloom-left-to-right"
     | "two-column-bloom-green"
     | "bloom-patterns-random-color";
@@ -53,6 +56,19 @@ type StepConfig = {
 const BLOOM_STEP_DELAY = 180;
 const TWO_COLUMN_BAND_DELAY = 1000;
 const GREEN_COLOR = "#36a852";
+const BLUE_COLOR = "#007fff";
+const YELLOW_ORANGE_COLORS = ["#fff1a8", "#ffe08a", "#ffd166", "#ffbe5c", "#ff9f43", "#f97316"];
+const RAINBOW_COLORS = ["#ff4d4d", "#ff8a1f", "#ffd84d", "#4dcf6f", "#47b8ff", "#7161ff", "#d45bff", "#ff6ec7"];
+const RANDOM_BLOOM_SEQUENCE = [
+  { row: 0, col: 3, level: 4 },
+  { row: 2, col: 9, level: 8 },
+  { row: 1, col: 5, level: 2 },
+  { row: 0, col: 10, level: 11 },
+  { row: 2, col: 1, level: 6 },
+  { row: 1, col: 8, level: 3 },
+  { row: 0, col: 0, level: 9 },
+  { row: 2, col: 6, level: 5 },
+];
 const SECOND_DEMO_BLOOM_BANDS = [
   { from: 1, to: 1 },
   { from: 1, to: 3 },
@@ -62,8 +78,8 @@ const SECOND_DEMO_BLOOM_BANDS = [
   { from: 1, to: 11 },
 ];
 const THIRD_DEMO_BLOOM_LEVELS = [3, 8, 5, 11, 2, 7];
-const THIRD_DEMO_BLOOM_STAGGER = 100;
-const THIRD_DEMO_BLOOM_DURATION = 450;
+const THIRD_DEMO_BLOOM_STAGGER = 350;
+const THIRD_DEMO_BLOOM_DURATION = 750;
 const RANDOM_COLOR_DELAY = 500;
 const RANDOM_COLOR_FLASHES = [
   { row: 0, col: 9, color: "#ff4d4d" },
@@ -275,6 +291,22 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     });
   };
 
+  const setCellLevel = (row: number, col: number, level: number) => {
+    updateCells((draft) => {
+      draft[row][col].level = level;
+    });
+  };
+
+  const setAllLevels = (level: number) => {
+    updateCells((draft) => {
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let col = 0; col < COLS; col += 1) {
+          draft[row][col].level = level;
+        }
+      }
+    });
+  };
+
   const bloomWave = (wave: Array<[number, number]>, delay: number) => {
     for (let level = 1; level <= 11; level += 1) {
       schedule(() => setWaveLevel(wave, level), delay + (level - 1) * BLOOM_STEP_DELAY);
@@ -285,6 +317,18 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     Array.from({ length: ROWS }, (_, row) => [row, col] as [number, number]);
 
   const getDemoDuration = () => {
+    if (config.demoKind === "blue-left-to-right") {
+      return COLS * HOP_DELAY + COLOR_STEPS * COLOR_STEP_DELAY + 600;
+    }
+
+    if (config.demoKind === "yellow-orange-bloom") {
+      return YELLOW_ORANGE_COLORS.length * TWO_COLUMN_BAND_DELAY + 10 * BLOOM_STEP_DELAY + 1200;
+    }
+
+    if (config.demoKind === "rainbow-random-bloom") {
+      return 2200 + (RANDOM_BLOOM_SEQUENCE.length - 1) * 350 + 1200;
+    }
+
     if (config.demoKind === "bloom-left-to-right") {
       return (COLS - 1) * HOP_DELAY + 10 * BLOOM_STEP_DELAY + 600;
     }
@@ -316,6 +360,37 @@ export default function BehaviourDescriptionStep({ config }: { config: StepConfi
     resetGrid();
     const duration = getDemoDuration();
     startProgressBar(duration);
+
+    if (config.demoKind === "blue-left-to-right") {
+      for (let col = 0; col < COLS; col += 1) {
+        schedule(() => fadeWave(columnWave(col), BLUE_COLOR), col * HOP_DELAY);
+      }
+      return;
+    }
+
+    if (config.demoKind === "yellow-orange-bloom") {
+      YELLOW_ORANGE_COLORS.forEach((color, bandIndex) => {
+        const wave = [...columnWave(bandIndex * 2), ...columnWave(bandIndex * 2 + 1)];
+        schedule(() => fadeWave(wave, color), bandIndex * TWO_COLUMN_BAND_DELAY);
+      });
+
+      const bloomStartDelay = YELLOW_ORANGE_COLORS.length * TWO_COLUMN_BAND_DELAY;
+      for (let level = 1; level <= 11; level += 1) {
+        schedule(() => setAllLevels(level), bloomStartDelay + (level - 1) * BLOOM_STEP_DELAY);
+      }
+      return;
+    }
+
+    if (config.demoKind === "rainbow-random-bloom") {
+      const centerOutColumns = [5, 6, 4, 7, 3, 8, 2, 9, 1, 10, 0, 11];
+      centerOutColumns.forEach((col, index) => {
+        schedule(() => fadeWave(columnWave(col), RAINBOW_COLORS[index % RAINBOW_COLORS.length]), index * 220);
+      });
+      RANDOM_BLOOM_SEQUENCE.forEach((entry, index) => {
+        schedule(() => setCellLevel(entry.row, entry.col, entry.level), 2200 + index * 350);
+      });
+      return;
+    }
 
     if (config.demoKind === "bloom-left-to-right") {
       for (let col = 0; col < COLS; col += 1) {
