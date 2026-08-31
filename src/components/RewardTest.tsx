@@ -73,6 +73,17 @@ type ComparisonPreset = {
   secondId: string;
   reward: number;
 };
+type ActionUse = { average: number; participantPercentage: number };
+type ConditionActionSummary = {
+  condition: string;
+  behaviourCount: number;
+  participantCount: number;
+  buckle: ActionUse;
+  buckleFlow: ActionUse;
+  color: ActionUse;
+  colorFlow: ActionUse;
+  bothColorAndBuckle: ActionUse;
+};
 
 const createGrid = (): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
@@ -319,6 +330,65 @@ const calculateReward = (first: RecordingEvent[], second: RecordingEvent[]): Rew
   };
 };
 
+const summarizeActionUse = (condition: string, items: Behaviour[]): ConditionActionSummary => {
+  // "Buckle" and "Color" here mean the direct all/selected actions.  Their
+  // flow counterparts are separate columns, so the table makes the distinction
+  // between individual/global changes and collective flow actions explicit.
+  const categories = {
+    buckle: new Set(["buckle_all", "buckle_selected"]),
+    buckleFlow: new Set(["buckle_flow"]),
+    color: new Set(["color_all", "color_selected"]),
+    colorFlow: new Set(["color_flow"]),
+  };
+  const participantEvents = new Map<string, Set<string>>();
+  const eventTotals = { buckle: 0, buckleFlow: 0, color: 0, colorFlow: 0 };
+
+  items.forEach((behaviour) => {
+    const participantKey = `${behaviour.participantId} | ${behaviour.runId}`;
+    const actions = participantEvents.get(participantKey) ?? new Set<string>();
+    behaviour.events.forEach((event) => {
+      actions.add(event.action);
+      (Object.keys(categories) as Array<keyof typeof categories>).forEach((category) => {
+        if (categories[category].has(event.action)) eventTotals[category] += 1;
+      });
+    });
+    participantEvents.set(participantKey, actions);
+  });
+
+  const participantCount = participantEvents.size;
+  const makeActionUse = (category: keyof typeof categories): ActionUse => {
+    const participantsUsing = [...participantEvents.values()].filter((actions) =>
+      [...categories[category]].some((action) => actions.has(action)),
+    ).length;
+    return {
+      average: items.length ? eventTotals[category] / items.length : 0,
+      participantPercentage: participantCount ? (participantsUsing / participantCount) * 100 : 0,
+    };
+  };
+  const bothParticipants = [...participantEvents.values()].filter((actions) =>
+    [...categories.color, ...categories.colorFlow].some((action) => actions.has(action)) &&
+    [...categories.buckle, ...categories.buckleFlow].some((action) => actions.has(action)),
+  ).length;
+
+  return {
+    condition,
+    behaviourCount: items.length,
+    participantCount,
+    buckle: makeActionUse("buckle"),
+    buckleFlow: makeActionUse("buckleFlow"),
+    color: makeActionUse("color"),
+    colorFlow: makeActionUse("colorFlow"),
+    bothColorAndBuckle: {
+      // A participant can count only once for "both", so its average is the
+      // proportion of behaviors belonging to participants who used both modes.
+      average: items.length ? bothParticipants / items.length : 0,
+      participantPercentage: participantCount ? (bothParticipants / participantCount) * 100 : 0,
+    },
+  };
+};
+
+const formatActionUse = (value: ActionUse) => `${value.average.toFixed(2)} avg · ${value.participantPercentage.toFixed(0)}%`;
+
 const getFlowWaves = (direction: string): Array<Array<[number, number]>> => {
   if (direction === "left_to_right" || direction === "right_to_left") {
     const columns = direction === "left_to_right" ? [...Array(COLS).keys()] : [...Array(COLS).keys()].reverse();
@@ -531,9 +601,17 @@ export default function RewardTest() {
   // All selectable participants are filtered to one condition.  This ensures
   // that manual comparisons and low/middle/high presets never cross conditions.
   const candidates = useMemo(
-    () => promptCandidates.filter((behaviour) => behaviour.condition === condition),
+    () => (condition ? promptCandidates.filter((behaviour) => behaviour.condition === condition) : promptCandidates),
     [promptCandidates, condition],
   );
+  const conditionActionSummaries = useMemo(() => {
+    const groups = new Map<string, Behaviour[]>();
+    behaviours.forEach((behaviour) => groups.set(behaviour.condition, [...(groups.get(behaviour.condition) ?? []), behaviour]));
+    const perCondition = [...groups.entries()]
+      .sort(([first], [second]) => first.localeCompare(second))
+      .map(([label, items]) => summarizeActionUse(label, items));
+    return [summarizeActionUse("All conditions", behaviours), ...perCondition];
+  }, [behaviours]);
   const first = candidates.find((behaviour) => behaviour.id === firstId) ?? null;
   const second = candidates.find((behaviour) => behaviour.id === secondId) ?? null;
   const reward = useMemo(() => (first && second ? calculateReward(first.events, second.events) : null), [first, second]);
@@ -567,11 +645,7 @@ export default function RewardTest() {
   }, [prompt, prompts]);
 
   useEffect(() => {
-    if (!conditions.length) {
-      setCondition("");
-      return;
-    }
-    if (!conditions.includes(condition)) setCondition(conditions[0]);
+    if (condition && !conditions.includes(condition)) setCondition("");
   }, [condition, conditions]);
 
   useEffect(() => {
@@ -620,7 +694,7 @@ export default function RewardTest() {
       <section className="controls-card admin-panel reward-controls">
         <div className="toolbar admin-upload-row">
           <label className="field field-wide"><span>Provided prompt</span><select value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={!prompts.length}><option value="">Select prompt</option>{prompts.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label className="field field-wide"><span>Condition</span><select value={condition} onChange={(event) => setCondition(event.target.value)} disabled={!conditions.length}><option value="">Select condition</option>{conditions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label className="field field-wide"><span>Condition</span><select value={condition} onChange={(event) => setCondition(event.target.value)} disabled={!conditions.length}><option value="">All conditions</option>{conditions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label className="field"><span>Participant 1</span><select value={firstId} onChange={(event) => setFirstId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
           <label className="field"><span>Participant 2</span><select value={secondId} onChange={(event) => setSecondId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
           <button onClick={() => setPlayNonce((current) => current + 1)} disabled={!first || !second}>Play both</button>
@@ -639,6 +713,20 @@ export default function RewardTest() {
       <section className="reward-gardens">
         <ReplayGarden behaviour={first} playNonce={playNonce} />
         <ReplayGarden behaviour={second} playNonce={playNonce} />
+      </section>
+
+      <section className="library-card reward-condition-summary">
+        <div className="library-header"><div><h2>Action Use by Condition</h2><p>Average event count per provided-prompt behavior and percent of participants who used each action type.</p></div></div>
+        <div className="reward-table-wrap">
+          <table className="reward-table">
+            <thead><tr><th>Condition</th><th>Behaviors</th><th>Participants</th><th>Buckle</th><th>Buckle Flow</th><th>Color</th><th>Color Flow</th><th>Both Color + Buckle</th></tr></thead>
+            <tbody>{conditionActionSummaries.map((summary) => (
+              <tr key={summary.condition} className={condition === summary.condition || (!condition && summary.condition === "All conditions") ? "selected" : ""}>
+                <th>{summary.condition}</th><td>{summary.behaviourCount}</td><td>{summary.participantCount}</td><td>{formatActionUse(summary.buckle)}</td><td>{formatActionUse(summary.buckleFlow)}</td><td>{formatActionUse(summary.color)}</td><td>{formatActionUse(summary.colorFlow)}</td><td>{formatActionUse(summary.bothColorAndBuckle)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
       </section>
 
       <section className="library-card reward-summary">

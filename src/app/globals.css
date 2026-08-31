@@ -840,6 +840,51 @@ textarea {
   margin: 22px auto;
 }
 
+.reward-condition-summary {
+  width: min(1180px, 100%);
+  margin: 22px auto;
+}
+
+.reward-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(116, 83, 54, 0.12);
+  border-radius: 16px;
+}
+
+.reward-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.reward-table th,
+.reward-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(116, 83, 54, 0.1);
+  text-align: left;
+  vertical-align: top;
+}
+
+.reward-table thead th {
+  background: rgba(116, 83, 54, 0.08);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.reward-table tbody th {
+  font-weight: 700;
+}
+
+.reward-table tbody tr.selected {
+  background: rgba(209, 75, 42, 0.09);
+}
+
+.reward-table tbody tr:last-child th,
+.reward-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .reward-preset-row {
   display: flex;
   flex-wrap: wrap;
