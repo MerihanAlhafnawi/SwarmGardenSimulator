@@ -39,6 +39,8 @@ type StudyRecord = {
   prolificPid?: string;
   manualParticipantId?: string;
   studyRunId?: string;
+  condition?: string | number;
+  condition_description?: string;
   steps?: { providedPrompts?: BehaviourEntry[]; implementedBehaviours?: BehaviourEntry[] };
 };
 type Behaviour = {
@@ -47,6 +49,7 @@ type Behaviour = {
   runId: string;
   prompt: string;
   rawPrompt: string;
+  condition: string;
   events: RecordingEvent[];
 };
 type MatchDetail = {
@@ -94,6 +97,11 @@ const canonicalPrompt = (value: string) => {
 const participantIdFor = (record: StudyRecord) =>
   record.prolificPid || record.participantNumber || record.manualParticipantId || "Unknown participant";
 
+const conditionLabelFor = (record: StudyRecord) => {
+  const number = record.condition === undefined || record.condition === null ? "Unspecified condition" : String(record.condition);
+  return record.condition_description ? `${number} | ${record.condition_description}` : number;
+};
+
 const extractRecords = (value: unknown): StudyRecord[] => {
   const records: StudyRecord[] = [];
   const visit = (node: unknown, docId?: string) => {
@@ -127,6 +135,7 @@ const extractBehaviours = (records: StudyRecord[]): Behaviour[] =>
         runId: record.studyRunId || record._docId || `run-${recordIndex + 1}`,
         prompt: canonicalPrompt(rawPrompt),
         rawPrompt,
+        condition: conditionLabelFor(record),
         events,
       }];
     });
@@ -464,6 +473,7 @@ export default function RewardTest() {
   const [message, setMessage] = useState("");
   const [records, setRecords] = useState<StudyRecord[]>([]);
   const [prompt, setPrompt] = useState("");
+  const [condition, setCondition] = useState("");
   const [firstId, setFirstId] = useState("");
   const [secondId, setSecondId] = useState("");
   const [playNonce, setPlayNonce] = useState(0);
@@ -506,7 +516,17 @@ export default function RewardTest() {
 
   const behaviours = useMemo(() => extractBehaviours(records), [records]);
   const prompts = useMemo(() => [...new Set(behaviours.map((behaviour) => behaviour.prompt))].sort(), [behaviours]);
-  const candidates = useMemo(() => behaviours.filter((behaviour) => behaviour.prompt === prompt), [behaviours, prompt]);
+  const promptCandidates = useMemo(() => behaviours.filter((behaviour) => behaviour.prompt === prompt), [behaviours, prompt]);
+  const conditions = useMemo(
+    () => [...new Set(promptCandidates.map((behaviour) => behaviour.condition))].sort(),
+    [promptCandidates],
+  );
+  // All selectable participants are filtered to one condition.  This ensures
+  // that manual comparisons and low/middle/high presets never cross conditions.
+  const candidates = useMemo(
+    () => promptCandidates.filter((behaviour) => behaviour.condition === condition),
+    [promptCandidates, condition],
+  );
   const first = candidates.find((behaviour) => behaviour.id === firstId) ?? null;
   const second = candidates.find((behaviour) => behaviour.id === secondId) ?? null;
   const reward = useMemo(() => (first && second ? calculateReward(first.events, second.events) : null), [first, second]);
@@ -538,6 +558,14 @@ export default function RewardTest() {
   useEffect(() => {
     if (!prompt && prompts[0]) setPrompt(prompts[0]);
   }, [prompt, prompts]);
+
+  useEffect(() => {
+    if (!conditions.length) {
+      setCondition("");
+      return;
+    }
+    if (!conditions.includes(condition)) setCondition(conditions[0]);
+  }, [condition, conditions]);
 
   useEffect(() => {
     if (!candidates.length) {
@@ -585,6 +613,7 @@ export default function RewardTest() {
       <section className="controls-card admin-panel reward-controls">
         <div className="toolbar admin-upload-row">
           <label className="field field-wide"><span>Provided prompt</span><select value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={!prompts.length}><option value="">Select prompt</option>{prompts.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label className="field field-wide"><span>Condition</span><select value={condition} onChange={(event) => setCondition(event.target.value)} disabled={!conditions.length}><option value="">Select condition</option>{conditions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label className="field"><span>Participant 1</span><select value={firstId} onChange={(event) => setFirstId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
           <label className="field"><span>Participant 2</span><select value={secondId} onChange={(event) => setSecondId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
           <button onClick={() => setPlayNonce((current) => current + 1)} disabled={!first || !second}>Play both</button>
