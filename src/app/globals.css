@@ -784,9 +784,9 @@ textarea {
 
 .reward-gardens {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
-  width: min(1180px, 100%);
+  width: min(840px, 100%);
   margin: 22px auto;
 }
 
@@ -838,6 +838,31 @@ textarea {
 .reward-summary {
   width: min(1180px, 100%);
   margin: 22px auto;
+}
+
+.reward-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+}
+
+.reward-preset-row > span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.reward-preset-row em {
+  font-size: 0.9rem;
+}
+
+.reward-preset-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.88rem;
 }
 
 .reward-score {
@@ -914,10 +939,6 @@ textarea {
 }
 
 @media (max-width: 760px) {
-  .reward-gardens {
-    grid-template-columns: 1fr;
-  }
-
   .reward-match {
     grid-template-columns: 1fr;
   }

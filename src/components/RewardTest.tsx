@@ -63,6 +63,12 @@ type RewardResult = {
   unmatchedSecond: number;
   matches: MatchDetail[];
 };
+type ComparisonPreset = {
+  label: "Lowest similarity" | "Middle similarity" | "Highest similarity";
+  firstId: string;
+  secondId: string;
+  reward: number;
+};
 
 const createGrid = (): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
@@ -492,6 +498,30 @@ export default function RewardTest() {
   const first = candidates.find((behaviour) => behaviour.id === firstId) ?? null;
   const second = candidates.find((behaviour) => behaviour.id === secondId) ?? null;
   const reward = useMemo(() => (first && second ? calculateReward(first.events, second.events) : null), [first, second]);
+  const comparisonPresets = useMemo<ComparisonPreset[]>(() => {
+    const pairs: Array<Omit<ComparisonPreset, "label">> = [];
+    for (let firstIndex = 0; firstIndex < candidates.length; firstIndex += 1) {
+      for (let secondIndex = firstIndex + 1; secondIndex < candidates.length; secondIndex += 1) {
+        pairs.push({
+          firstId: candidates[firstIndex].id,
+          secondId: candidates[secondIndex].id,
+          reward: calculateReward(candidates[firstIndex].events, candidates[secondIndex].events).reward,
+        });
+      }
+    }
+    if (!pairs.length) return [];
+
+    const sorted = [...pairs].sort((firstPair, secondPair) => firstPair.reward - secondPair.reward);
+    const median = sorted[Math.floor(sorted.length / 2)].reward;
+    const middle = sorted.reduce((closest, pair) =>
+      Math.abs(pair.reward - median) < Math.abs(closest.reward - median) ? pair : closest,
+    );
+    return [
+      { label: "Lowest similarity", ...sorted[0] },
+      { label: "Middle similarity", ...middle },
+      { label: "Highest similarity", ...sorted[sorted.length - 1] },
+    ];
+  }, [candidates]);
 
   useEffect(() => {
     if (!prompt && prompts[0]) setPrompt(prompts[0]);
@@ -515,6 +545,11 @@ export default function RewardTest() {
     window.sessionStorage.setItem(ADMIN_AUTH_STORAGE_KEY, "true");
     setUnlocked(true);
     setMessage("Reward test unlocked.");
+  };
+
+  const applyPreset = (preset: ComparisonPreset) => {
+    setFirstId(preset.firstId);
+    setSecondId(preset.secondId);
   };
 
   if (!unlocked) {
@@ -541,6 +576,14 @@ export default function RewardTest() {
           <label className="field"><span>Participant 1</span><select value={firstId} onChange={(event) => setFirstId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
           <label className="field"><span>Participant 2</span><select value={secondId} onChange={(event) => setSecondId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
           <button onClick={() => setPlayNonce((current) => current + 1)} disabled={!first || !second}>Play both</button>
+        </div>
+        <div className="reward-preset-row" aria-label="Comparison presets">
+          <span>Quick comparisons</span>
+          {comparisonPresets.length === 0 ? <em>Select a prompt with at least two saved behaviors.</em> : comparisonPresets.map((preset) => (
+            <button key={preset.label} className="ghost reward-preset-button" onClick={() => applyPreset(preset)}>
+              {preset.label}: {preset.reward.toFixed(3)}
+            </button>
+          ))}
         </div>
         {message ? <p className="control-hint admin-message">{message}</p> : null}
       </section>
