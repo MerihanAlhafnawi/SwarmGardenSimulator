@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CLEANED_PROLIFIC_STUDY_RUN_IDS } from "@/lib/cleanedProlificRuns";
+import { CLEANED_PROLIFIC_STUDIES } from "@/lib/cleanedProlificRuns";
 import { getFirebaseDb } from "@/lib/firebase";
 
 // Keep this aligned with AdminReplay so both internal tools use the same access
@@ -497,10 +497,17 @@ export default function RewardTest() {
         // The reward tool intentionally uses only the 104 records retained in
         // the cleaned Prolific export.  Manual entries and discarded duplicate
         // runs are filtered out before they reach any selector or calculation.
-        const nextRecords = allRecords.filter((record) =>
-          Boolean(record.prolificPid) &&
-          CLEANED_PROLIFIC_STUDY_RUN_IDS.has(record.studyRunId || record._docId || ""),
-        );
+        const nextRecords = allRecords.flatMap((record) => {
+          const metadata = CLEANED_PROLIFIC_STUDIES.get(record.studyRunId || record._docId || "");
+          if (!record.prolificPid || !metadata) return [];
+          // Firebase records predate the condition annotations.  Attach the
+          // trusted metadata from the cleaned export before grouping records.
+          return [{
+            ...record,
+            condition: metadata.condition ?? undefined,
+            condition_description: metadata.conditionDescription ?? undefined,
+          }];
+        });
         setRecords(nextRecords);
         setMessage(
           nextRecords.length
