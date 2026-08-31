@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CLEANED_PROLIFIC_STUDY_RUN_IDS } from "@/lib/cleanedProlificRuns";
 import { getFirebaseDb } from "@/lib/firebase";
 
 // Keep this aligned with AdminReplay so both internal tools use the same access
@@ -482,9 +483,20 @@ export default function RewardTest() {
       try {
         setMessage("Loading study data...");
         const snapshot = await getDocs(collection(db, "recordings"));
-        const nextRecords = extractRecords(snapshot.docs.map((doc) => ({ _docId: doc.id, ...doc.data() })));
+        const allRecords = extractRecords(snapshot.docs.map((doc) => ({ _docId: doc.id, ...doc.data() })));
+        // The reward tool intentionally uses only the 104 records retained in
+        // the cleaned Prolific export.  Manual entries and discarded duplicate
+        // runs are filtered out before they reach any selector or calculation.
+        const nextRecords = allRecords.filter((record) =>
+          Boolean(record.prolificPid) &&
+          CLEANED_PROLIFIC_STUDY_RUN_IDS.has(record.studyRunId || record._docId || ""),
+        );
         setRecords(nextRecords);
-        setMessage(nextRecords.length ? `Loaded ${nextRecords.length} study records.` : "No study records found.");
+        setMessage(
+          nextRecords.length
+            ? `Loaded ${nextRecords.length} cleaned Prolific study records.`
+            : "No cleaned Prolific study records found in Firebase.",
+        );
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Could not load Firebase data.");
       }
