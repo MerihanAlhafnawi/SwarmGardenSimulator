@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { collection, getDocs } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { CLEANED_PROLIFIC_STUDIES } from "@/lib/cleanedProlificRuns";
 import { getFirebaseDb } from "@/lib/firebase";
 
@@ -84,6 +84,21 @@ type ConditionActionSummary = {
   colorFlow: ActionUse;
   bothColorAndBuckle: ActionUse;
 };
+type PilotResult = {
+  model?: string;
+  target_behaviour_id?: string;
+  target_run_key?: string;
+  target_description?: string;
+  target_events?: RecordingEvent[];
+  predicted_events?: RecordingEvent[];
+};
+type PilotComparison = {
+  id: string;
+  model: string;
+  description: string;
+  target: Behaviour;
+  prediction: Behaviour;
+};
 
 const createGrid = (): Cell[][] =>
   Array.from({ length: ROWS }, (_, row) =>
@@ -151,6 +166,32 @@ const extractBehaviours = (records: StudyRecord[]): Behaviour[] =>
       }];
     });
   });
+
+const extractPilotResults = (value: unknown): PilotResult[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is PilotResult => {
+    if (!item || typeof item !== "object") return false;
+    const candidate = item as PilotResult;
+    return (
+      typeof candidate.target_behaviour_id === "string" &&
+      typeof candidate.target_description === "string" &&
+      Array.isArray(candidate.target_events) &&
+      Array.isArray(candidate.predicted_events)
+    );
+  });
+};
+
+const parsePilotUpload = (fileText: string): PilotResult[] => {
+  // A running pilot writes one JSON object per line (.jsonl); the optional
+  // formatting command writes one JSON array (.json).  This accepts either.
+  const trimmed = fileText.trim();
+  if (!trimmed) return [];
+  try {
+    return extractPilotResults(JSON.parse(trimmed));
+  } catch {
+    return extractPilotResults(trimmed.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line)));
+  }
+};
 
 const hexToRgb = (value: unknown): number[] => {
   const color = String(value || DEFAULT_COLOR).replace("#", "");
@@ -546,6 +587,8 @@ export default function RewardTest() {
   const [condition, setCondition] = useState("");
   const [firstId, setFirstId] = useState("");
   const [secondId, setSecondId] = useState("");
+  const [pilotResults, setPilotResults] = useState<PilotResult[]>([]);
+  const [selectedPilotId, setSelectedPilotId] = useState("");
   const [playNonce, setPlayNonce] = useState(0);
 
   useEffect(() => {
@@ -604,6 +647,40 @@ export default function RewardTest() {
     () => (condition ? promptCandidates.filter((behaviour) => behaviour.condition === condition) : promptCandidates),
     [promptCandidates, condition],
   );
+  const pilotComparisons = useMemo<PilotComparison[]>(
+    () => pilotResults.map((result, index) => {
+      const id = `${result.model || "Claude"}-${result.target_behaviour_id || index}`;
+      const description = result.target_description || "Untitled behavior";
+      const runId = result.target_run_key || "held-out run";
+      return {
+        id,
+        model: result.model || "Claude",
+        description,
+        target: {
+          id: `${id}-participant`,
+          participantId: "Participant original",
+          runId,
+          prompt: description,
+          rawPrompt: description,
+          condition: "Held-out test behavior",
+          events: result.target_events ?? [],
+        },
+        prediction: {
+          id: `${id}-model`,
+          participantId: result.model || "Claude prediction",
+          runId,
+          prompt: description,
+          rawPrompt: description,
+          condition: "LLM prediction",
+          events: result.predicted_events ?? [],
+        },
+      };
+    }),
+    [pilotResults],
+  );
+  const selectedPilot = selectedPilotId
+    ? pilotComparisons.find((item) => item.id === selectedPilotId) ?? pilotComparisons[0] ?? null
+    : null;
   const conditionActionSummaries = useMemo(() => {
     const groups = new Map<string, Behaviour[]>();
     behaviours.forEach((behaviour) => groups.set(behaviour.condition, [...(groups.get(behaviour.condition) ?? []), behaviour]));
@@ -612,8 +689,8 @@ export default function RewardTest() {
       .map(([label, items]) => summarizeActionUse(label, items));
     return [summarizeActionUse("All conditions", behaviours), ...perCondition];
   }, [behaviours]);
-  const first = candidates.find((behaviour) => behaviour.id === firstId) ?? null;
-  const second = candidates.find((behaviour) => behaviour.id === secondId) ?? null;
+  const first = selectedPilot ? selectedPilot.target : candidates.find((behaviour) => behaviour.id === firstId) ?? null;
+  const second = selectedPilot ? selectedPilot.prediction : candidates.find((behaviour) => behaviour.id === secondId) ?? null;
   const reward = useMemo(() => (first && second ? calculateReward(first.events, second.events) : null), [first, second]);
   const comparisonPresets = useMemo<ComparisonPreset[]>(() => {
     const pairs: Array<Omit<ComparisonPreset, "label">> = [];
@@ -669,8 +746,32 @@ export default function RewardTest() {
   };
 
   const applyPreset = (preset: ComparisonPreset) => {
+    setSelectedPilotId("");
     setFirstId(preset.firstId);
     setSecondId(preset.secondId);
+  };
+
+  const handlePilotUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = parsePilotUpload(await file.text());
+      if (!parsed.length) {
+        setMessage("No pilot predictions found. Upload results.json or results.jsonl from the Claude pilot.");
+        setPilotResults([]);
+        return;
+      }
+      setPilotResults(parsed);
+      setSelectedPilotId(`${parsed[0].model || "Claude"}-${parsed[0].target_behaviour_id || 0}`);
+      setMessage(`Loaded ${parsed.length} model prediction${parsed.length === 1 ? "" : "s"}. Choose one below to compare it with the held-out participant behavior.`);
+    } catch (error) {
+      setPilotResults([]);
+      setSelectedPilotId("");
+      setMessage(error instanceof Error ? error.message : "Could not read the pilot results file.");
+    } finally {
+      // Allow re-uploading the same file after a refresh or updated pilot.
+      event.target.value = "";
+    }
   };
 
   if (!unlocked) {
@@ -693,10 +794,19 @@ export default function RewardTest() {
       <section className="hero"><div className="application-hero"><h1>Reward Test</h1></div><p className="intro-text">Compare two participant implementations of the same provided prompt and inspect the step-level reward.</p></section>
       <section className="controls-card admin-panel reward-controls">
         <div className="toolbar admin-upload-row">
-          <label className="field field-wide"><span>Provided prompt</span><select value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={!prompts.length}><option value="">Select prompt</option>{prompts.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label className="field field-wide"><span>Condition</span><select value={condition} onChange={(event) => setCondition(event.target.value)} disabled={!conditions.length}><option value="">All conditions</option>{conditions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label className="field"><span>Participant 1</span><select value={firstId} onChange={(event) => setFirstId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
-          <label className="field"><span>Participant 2</span><select value={secondId} onChange={(event) => setSecondId(event.target.value)} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
+          <label className="field field-wide"><span>Claude pilot results</span><input type="file" accept=".json,.jsonl,application/json" onChange={handlePilotUpload} /></label>
+          {pilotComparisons.length ? (
+            <>
+              <label className="field field-wide"><span>LLM comparison</span><select value={selectedPilotId} onChange={(event) => setSelectedPilotId(event.target.value)}>{pilotComparisons.map((item) => <option key={item.id} value={item.id}>{item.model} · {item.description}</option>)}</select></label>
+              <button className="ghost" onClick={() => setSelectedPilotId("")}>Use participant comparison</button>
+            </>
+          ) : <p className="control-hint">Upload the pilot&apos;s <code>results.jsonl</code> or <code>results.json</code> to compare a participant with Sonnet or Haiku.</p>}
+        </div>
+        <div className="toolbar admin-upload-row">
+          <label className="field field-wide"><span>Provided prompt</span><select value={prompt} onChange={(event) => { setSelectedPilotId(""); setPrompt(event.target.value); }} disabled={!prompts.length}><option value="">Select prompt</option>{prompts.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label className="field field-wide"><span>Condition</span><select value={condition} onChange={(event) => { setSelectedPilotId(""); setCondition(event.target.value); }} disabled={!conditions.length}><option value="">All conditions</option>{conditions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label className="field"><span>Participant 1</span><select value={firstId} onChange={(event) => { setSelectedPilotId(""); setFirstId(event.target.value); }} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
+          <label className="field"><span>Participant 2</span><select value={secondId} onChange={(event) => { setSelectedPilotId(""); setSecondId(event.target.value); }} disabled={!candidates.length}>{candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.participantId} · {candidate.runId}</option>)}</select></label>
           <button onClick={() => setPlayNonce((current) => current + 1)} disabled={!first || !second}>Play both</button>
         </div>
         <div className="reward-preset-row" aria-label="Comparison presets">
@@ -730,16 +840,16 @@ export default function RewardTest() {
       </section>
 
       <section className="library-card reward-summary">
-        <div className="library-header"><div><h2>Reward Breakdown</h2><p>The score uses the current step-level reward function.</p></div>{reward ? <strong className="reward-score">{reward.reward.toFixed(3)}</strong> : null}</div>
+        <div className="library-header"><div><h2>Reward Breakdown</h2><p>{selectedPilot ? `Participant original vs ${selectedPilot.model}.` : "The score uses the current step-level reward function."}</p></div>{reward ? <strong className="reward-score">{reward.reward.toFixed(3)}</strong> : null}</div>
         {!reward || !first || !second ? <p className="empty-state">Choose one prompt and two participant implementations to calculate the reward.</p> : (
           <>
             <p className="reward-formula"><code>reward = matched contributions / longer behavior length = {reward.rawMatchedReward.toFixed(3)} / {reward.denominator} = {reward.reward.toFixed(3)}</code></p>
-            <div className="reward-explainer"><span>{reward.matches.length} matched step pairs</span><span>{reward.unmatchedFirst} unmatched step{reward.unmatchedFirst === 1 ? "" : "s"} for participant 1</span><span>{reward.unmatchedSecond} unmatched step{reward.unmatchedSecond === 1 ? "" : "s"} for participant 2</span></div>
+            <div className="reward-explainer"><span>{reward.matches.length} matched step pairs</span><span>{reward.unmatchedFirst} unmatched step{reward.unmatchedFirst === 1 ? "" : "s"} for {selectedPilot ? "the participant" : "participant 1"}</span><span>{reward.unmatchedSecond} unmatched step{reward.unmatchedSecond === 1 ? "" : "s"} for {selectedPilot ? selectedPilot.model : "participant 2"}</span></div>
             <div className="reward-match-list">
               {reward.matches.length === 0 ? <p className="empty-state">These behaviors have no matching action modes.</p> : reward.matches.map((match) => (
                 <article key={`${match.firstIndex}-${match.secondIndex}`} className="reward-match">
-                  <div><strong>P1 step {match.firstIndex + 1}</strong><p>{eventLabel(first.events[match.firstIndex])}</p></div>
-                  <div><strong>P2 step {match.secondIndex + 1}</strong><p>{eventLabel(second.events[match.secondIndex])}</p></div>
+                  <div><strong>{selectedPilot ? "Participant" : "P1"} step {match.firstIndex + 1}</strong><p>{eventLabel(first.events[match.firstIndex])}</p></div>
+                  <div><strong>{selectedPilot?.model ?? "P2"} step {match.secondIndex + 1}</strong><p>{eventLabel(second.events[match.secondIndex])}</p></div>
                   <div className="reward-numbers"><span>Step similarity: {match.stepSimilarity.toFixed(3)}</span><span>Position similarity: {match.positionSimilarity.toFixed(3)}</span><strong>Contribution: {match.contribution.toFixed(3)}</strong></div>
                 </article>
               ))}
