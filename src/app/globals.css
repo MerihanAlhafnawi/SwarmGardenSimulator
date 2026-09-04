@@ -844,6 +844,19 @@ textarea {
   margin: 0;
 }
 
+.reward-garden-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reward-play-button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
 .reward-swarm-grid {
   gap: 5px;
   padding: 9px;

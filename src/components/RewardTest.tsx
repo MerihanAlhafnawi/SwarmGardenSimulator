@@ -462,6 +462,7 @@ export function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | 
   const [grid, setGrid] = useState<Cell[][]>(() => createGrid());
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [localPlayNonce, setLocalPlayNonce] = useState(0);
   const gridRef = useRef<Cell[][]>(createGrid());
   const timersRef = useRef<number[]>([]);
 
@@ -488,7 +489,7 @@ export function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | 
   }, [behaviour?.id]);
 
   useEffect(() => {
-    if (!playNonce || !behaviour) return;
+    if ((!playNonce && !localPlayNonce) || !behaviour) return;
     clearTimers();
     const reset = createGrid();
     gridRef.current = reset;
@@ -555,13 +556,16 @@ export function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | 
     // `playNonce` is deliberately the trigger.  A click starts both gardens
     // from the same render cycle, even if the selected behaviors are unchanged.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playNonce]);
+  }, [playNonce, localPlayNonce]);
 
   return (
     <article className="reward-garden">
       <div className="reward-garden-heading">
         <strong>{behaviour?.participantId ?? "Select a participant"}</strong>
-        <span>{behaviour ? `${behaviour.events.length} steps${isPlaying && activeStep !== null ? ` · Playing step ${activeStep + 1}` : ""}` : ""}</span>
+        <div className="reward-garden-actions">
+          <span>{behaviour ? `${behaviour.events.length} steps${isPlaying && activeStep !== null ? ` · Playing step ${activeStep + 1}` : ""}` : ""}</span>
+          <button className="ghost reward-play-button" onClick={() => setLocalPlayNonce((current) => current + 1)} disabled={!behaviour || isPlaying}>{isPlaying ? "Playing" : "Play"}</button>
+        </div>
       </div>
       <div className="swarm-grid reward-swarm-grid" aria-label="Participant replay grid">
         {grid.flat().map((cell) => (
