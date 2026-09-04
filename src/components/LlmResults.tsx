@@ -109,12 +109,6 @@ export default function LlmResults() {
     rows.forEach((row) => values.set(row.target_behaviour_id, { id: row.target_behaviour_id, description: row.target_description }));
     return [...values.values()].sort((a, b) => a.description.localeCompare(b.description));
   }, [rows]);
-  const allSplits = useMemo(() => [...new Set(rows.map((row) => row.split_index))].sort((a, b) => a - b), [rows]);
-  const targetsInSelectedSplit = useMemo(() => {
-    const values = new Map<string, { id: string; description: string }>();
-    rows.filter((row) => row.split_index === splitIndex).forEach((row) => values.set(row.target_behaviour_id, { id: row.target_behaviour_id, description: row.target_description }));
-    return [...values.values()].sort((a, b) => a.description.localeCompare(b.description));
-  }, [rows, splitIndex]);
   const targetRows = useMemo(() => rows.filter((row) => row.target_behaviour_id === targetId), [rows, targetId]);
   const splitOptions = useMemo(() => [...new Set(targetRows.map((row) => row.split_index))].sort((a, b) => a - b), [targetRows]);
   const selectedRows = useMemo(() => targetRows.filter((row) => row.split_index === splitIndex), [targetRows, splitIndex]);
@@ -144,11 +138,7 @@ export default function LlmResults() {
   }, [targetRows]);
   const pairwiseReferenceStats = useMemo(() => statistics(targetRows.filter((row) => row.condition === "closest_three").flatMap((row) => row.top_k_comparison?.pairwise_reference_rewards ?? []).map((pair) => rewardNumber(pair.reward)).filter((value): value is number => value !== null)), [targetRows]);
 
-  useEffect(() => { if (allSplits.length && !allSplits.includes(splitIndex)) setSplitIndex(allSplits[0]); }, [allSplits, splitIndex]);
-  useEffect(() => {
-    if (!targetsInSelectedSplit.length) return;
-    if (!targetsInSelectedSplit.some((target) => target.id === targetId)) setTargetId(targetsInSelectedSplit[0].id);
-  }, [targetId, targetsInSelectedSplit]);
+  useEffect(() => { if (!targetId && targets[0]) setTargetId(targets[0].id); }, [targetId, targets]);
   useEffect(() => { if (splitOptions.length && !splitOptions.includes(splitIndex)) setSplitIndex(splitOptions[0]); }, [splitIndex, splitOptions]);
 
   const unlock = () => {
@@ -163,7 +153,7 @@ export default function LlmResults() {
     try {
       const loaded = parseRows(await file.text());
       if (!loaded.length) throw new Error("No LLM experiment rows found. Upload the completed results.jsonl file.");
-      setRows(loaded); setTargetId(""); setSplitIndex(Math.min(...loaded.map((row) => row.split_index))); setMessage(`Loaded ${loaded.length} experiment calls for ${new Set(loaded.map((row) => row.target_behaviour_id)).size} held-out behaviors.`);
+      setRows(loaded); setTargetId(""); setSplitIndex(0); setMessage(`Loaded ${loaded.length} experiment calls for ${new Set(loaded.map((row) => row.target_behaviour_id)).size} held-out behaviors.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not read experiment results."); }
     finally { event.target.value = ""; }
   };
@@ -192,7 +182,7 @@ export default function LlmResults() {
 
   return <main className="page-shell reward-test-page llm-results-page">
     <section className="hero"><div className="application-hero"><h1>LLM Results Viewer</h1></div><p className="intro-text">Inspect every held-out participant behavior across all randomized splits and prompting conditions.</p></section>
-    <section className="controls-card admin-panel reward-controls"><div className="toolbar admin-upload-row"><label className="field field-wide"><span>1. Completed experiment results: results.jsonl</span><input type="file" accept=".jsonl,.json,application/json" onChange={uploadResults} /></label><label className="field field-wide"><span>2. Cleaned Prolific data: all-study-data-prolific-conditions.json</span><input type="file" accept=".json,application/json" onChange={uploadReferences} /></label></div><p className="control-hint">The manifest is not needed. The second file is only needed to replay the top-three references; the original behavior and all LLM outputs work with <code>results.jsonl</code> alone.</p>{rows.length ? <div className="toolbar admin-upload-row"><label className="field"><span>1. Randomized split</span><select value={splitIndex} onChange={(event) => setSplitIndex(Number(event.target.value))}>{allSplits.map((split) => <option key={split} value={split}>Split {split + 1}</option>)}</select></label><label className="field field-wide"><span>2. Participant behavior description</span><select value={targetId} onChange={(event) => setTargetId(event.target.value)}>{targetsInSelectedSplit.map((target) => <option key={target.id} value={target.id}>{target.description} · {target.id}</option>)}</select></label><button onClick={() => setPlayNonce((value) => value + 1)} disabled={!selectedTarget}>Play all displayed</button></div> : null}{message ? <p className="control-hint admin-message">{message}</p> : null}</section>
+    <section className="controls-card admin-panel reward-controls"><div className="toolbar admin-upload-row"><label className="field field-wide"><span>1. Completed experiment results: results.jsonl</span><input type="file" accept=".jsonl,.json,application/json" onChange={uploadResults} /></label><label className="field field-wide"><span>2. Cleaned Prolific data: all-study-data-prolific-conditions.json</span><input type="file" accept=".json,application/json" onChange={uploadReferences} /></label></div><p className="control-hint">The manifest is not needed. The second file is only needed to replay the top-three references; the original behavior and all LLM outputs work with <code>results.jsonl</code> alone.</p>{rows.length ? <div className="toolbar admin-upload-row"><label className="field field-wide"><span>1. Participant behavior description</span><select value={targetId} onChange={(event) => setTargetId(event.target.value)}>{targets.map((target) => <option key={target.id} value={target.id}>{target.description} · {target.id}</option>)}</select></label><label className="field"><span>2. Randomized split</span><select value={splitIndex} onChange={(event) => setSplitIndex(Number(event.target.value))}>{splitOptions.map((split) => <option key={split} value={split}>Split {split + 1}</option>)}</select></label><button onClick={() => setPlayNonce((value) => value + 1)} disabled={!selectedTarget}>Play all displayed</button></div> : null}{message ? <p className="control-hint admin-message">{message}</p> : null}</section>
     {!selectedTarget ? <section className="library-card llm-empty"><p>Upload the completed <code>results.jsonl</code> file to begin.</p></section> : <>
       <section className="library-card llm-selected-summary"><h2>Selected behavior</h2><p>{selectedTarget.target_description}</p><p className="control-hint">This behavior appears in {splitOptions.length} randomized splits. The selected split determines the exact closest-three references and all three LLM outputs shown below.</p></section>
       <section className="reward-gardens llm-gardens"><ReplayGarden behaviour={targetBehaviour} playNonce={playNonce} />{predictionGardens.map((behaviour, index) => <ReplayGarden key={CONDITIONS[index]} behaviour={behaviour} playNonce={playNonce} />)}</section>
