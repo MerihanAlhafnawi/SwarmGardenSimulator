@@ -790,6 +790,31 @@ textarea {
   margin: 22px auto;
 }
 
+/* Separate audit page for browsing every stored Claude generation. */
+.llm-selected-summary,
+.llm-empty {
+  width: min(1180px, 100%);
+  margin: 22px auto;
+}
+
+.llm-selected-summary h2 {
+  margin-top: 0;
+}
+
+.llm-selected-summary > p:not(.control-hint) {
+  color: var(--text);
+  font-size: 1.06rem;
+  line-height: 1.55;
+}
+
+.llm-gardens {
+  width: min(980px, 100%);
+}
+
+.llm-reference-pairs {
+  margin-top: 16px;
+}
+
 .reward-garden {
   min-width: 0;
   padding: 16px;

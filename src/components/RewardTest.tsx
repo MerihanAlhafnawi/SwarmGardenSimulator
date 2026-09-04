@@ -26,7 +26,7 @@ const REPLAY_PAUSE = 2000;
 
 type Cell = { row: number; col: number; color: string; level: number };
 type EventData = Record<string, unknown>;
-type RecordingEvent = { action: string; data?: EventData; time?: number };
+export type RecordingEvent = { action: string; data?: EventData; time?: number };
 type BehaviourEntry = {
   id?: string;
   submittedAt?: string;
@@ -43,7 +43,7 @@ type StudyRecord = {
   condition_description?: string;
   steps?: { providedPrompts?: BehaviourEntry[]; implementedBehaviours?: BehaviourEntry[] };
 };
-type Behaviour = {
+export type Behaviour = {
   id: string;
   participantId: string;
   runId: string;
@@ -59,7 +59,7 @@ type MatchDetail = {
   positionSimilarity: number;
   contribution: number;
 };
-type RewardResult = {
+export type RewardResult = {
   reward: number;
   rawMatchedReward: number;
   denominator: number;
@@ -86,6 +86,8 @@ type ConditionActionSummary = {
 };
 type PilotResult = {
   model?: string;
+  condition?: string;
+  split_index?: number;
   target_behaviour_id?: string;
   target_run_key?: string;
   target_description?: string;
@@ -95,6 +97,8 @@ type PilotResult = {
 type PilotComparison = {
   id: string;
   model: string;
+  condition: string;
+  splitIndex: number;
   description: string;
   target: Behaviour;
   prediction: Behaviour;
@@ -344,7 +348,7 @@ const maximumWeightMatching = (weights: number[][]): Array<[number, number, numb
   return matches;
 };
 
-const calculateReward = (first: RecordingEvent[], second: RecordingEvent[]): RewardResult => {
+export const calculateReward = (first: RecordingEvent[], second: RecordingEvent[]): RewardResult => {
   const weights = first.map((firstEvent) => second.map((secondEvent) => stepSimilarity(firstEvent, secondEvent)));
   const rawMatches = maximumWeightMatching(weights);
   const matches = rawMatches.map(([firstIndex, secondIndex, similarity]) => {
@@ -454,7 +458,7 @@ const eventDuration = (event: RecordingEvent) => {
   return 300;
 };
 
-function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | null; playNonce: number }) {
+export function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | null; playNonce: number }) {
   const [grid, setGrid] = useState<Cell[][]>(() => createGrid());
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -570,7 +574,7 @@ function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | null; p
   );
 }
 
-const eventLabel = (event: RecordingEvent) => {
+export const eventLabel = (event: RecordingEvent) => {
   const data = event.data ?? {};
   const direction = data.direction ? ` ${String(data.direction).replaceAll("_", " ")}` : "";
   const color = data.color ? ` ${String(data.color)}` : "";
@@ -649,12 +653,17 @@ export default function RewardTest() {
   );
   const pilotComparisons = useMemo<PilotComparison[]>(
     () => pilotResults.map((result, index) => {
-      const id = `${result.model || "Claude"}-${result.target_behaviour_id || index}`;
+      // A full experiment can evaluate the same held-out behavior in many
+      // randomized splits.  Include split and condition in this UI ID so each
+      // result remains separately selectable instead of collapsing together.
+      const id = `${result.model || "Claude"}-${result.condition || "pilot"}-${result.split_index ?? 0}-${result.target_behaviour_id || index}`;
       const description = result.target_description || "Untitled behavior";
       const runId = result.target_run_key || "held-out run";
       return {
         id,
         model: result.model || "Claude",
+        condition: result.condition || "pilot",
+        splitIndex: result.split_index ?? 0,
         description,
         target: {
           id: `${id}-participant`,
@@ -762,7 +771,7 @@ export default function RewardTest() {
         return;
       }
       setPilotResults(parsed);
-      setSelectedPilotId(`${parsed[0].model || "Claude"}-${parsed[0].target_behaviour_id || 0}`);
+      setSelectedPilotId(`${parsed[0].model || "Claude"}-${parsed[0].condition || "pilot"}-${parsed[0].split_index ?? 0}-${parsed[0].target_behaviour_id || 0}`);
       setMessage(`Loaded ${parsed.length} model prediction${parsed.length === 1 ? "" : "s"}. Choose one below to compare it with the held-out participant behavior.`);
     } catch (error) {
       setPilotResults([]);
@@ -797,7 +806,7 @@ export default function RewardTest() {
           <label className="field field-wide"><span>Claude pilot results</span><input type="file" accept=".json,.jsonl,application/json" onChange={handlePilotUpload} /></label>
           {pilotComparisons.length ? (
             <>
-              <label className="field field-wide"><span>LLM comparison</span><select value={selectedPilotId} onChange={(event) => setSelectedPilotId(event.target.value)}>{pilotComparisons.map((item) => <option key={item.id} value={item.id}>{item.model} · {item.description}</option>)}</select></label>
+              <label className="field field-wide"><span>LLM comparison</span><select value={selectedPilotId} onChange={(event) => setSelectedPilotId(event.target.value)}>{pilotComparisons.map((item) => <option key={item.id} value={item.id}>{item.model} · {item.condition} · split {item.splitIndex + 1} · {item.description}</option>)}</select></label>
               <button className="ghost" onClick={() => setSelectedPilotId("")}>Use participant comparison</button>
             </>
           ) : <p className="control-hint">Upload the pilot&apos;s <code>results.jsonl</code> or <code>results.json</code> to compare a participant with Sonnet or Haiku.</p>}
