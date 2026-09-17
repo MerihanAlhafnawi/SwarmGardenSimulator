@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Behaviour, calculateReward, ReplayGarden, type RecordingEvent } from "@/components/RewardTest";
 
 const ADMIN_PASSWORD = "040924";
@@ -54,6 +54,17 @@ const parseRows = (text: string): ResultRow[] => {
 const extractReferences = (value: unknown): Map<string, ReferenceBehaviour> => {
   if (!Array.isArray(value)) return new Map();
   const references = new Map<string, ReferenceBehaviour>();
+  // The deployed reference export is deliberately de-identified. It contains
+  // only the behavior IDs, descriptions, and events needed for replay.
+  if (value.every((item) => item && typeof item === "object" && "id" in item && "events" in item)) {
+    value.forEach((item) => {
+      const reference = item as ReferenceBehaviour;
+      if (typeof reference.id === "string" && typeof reference.description === "string" && Array.isArray(reference.events)) {
+        references.set(reference.id, reference);
+      }
+    });
+    return references;
+  }
   value.forEach((record, recordIndex) => {
     const entryList = (record as CleanRecord)?.steps?.designedBehaviours;
     if (!Array.isArray(entryList)) return;
@@ -106,6 +117,34 @@ export default function LlmResults() {
     if (window.sessionStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === "true") setUnlocked(true);
   }, []);
 
+  useEffect(() => {
+    if (!unlocked) return;
+    let cancelled = false;
+    const loadExperiment = async () => {
+      try {
+        setMessage("Loading completed experiment data...");
+        const [resultsResponse, referencesResponse] = await Promise.all([
+          fetch("/llm-results/results.jsonl"),
+          fetch("/llm-results/references.json"),
+        ]);
+        if (!resultsResponse.ok || !referencesResponse.ok) throw new Error("The bundled experiment files could not be loaded.");
+        const [resultsText, referencesJson] = await Promise.all([resultsResponse.text(), referencesResponse.json()]);
+        const loadedRows = parseRows(resultsText);
+        const loadedReferences = extractReferences(referencesJson);
+        if (!loadedRows.length) throw new Error("The bundled results file did not contain usable experiment calls.");
+        if (!cancelled) {
+          setRows(loadedRows);
+          setReferenceMap(loadedReferences);
+          setMessage(`Loaded ${loadedRows.length} experiment calls and ${loadedReferences.size} reference behaviors.`);
+        }
+      } catch (error) {
+        if (!cancelled) setMessage(error instanceof Error ? error.message : "Could not load experiment data.");
+      }
+    };
+    void loadExperiment();
+    return () => { cancelled = true; };
+  }, [unlocked]);
+
   const targets = useMemo(() => {
     const values = new Map<string, { id: string; description: string }>();
     rows.forEach((row) => values.set(row.target_behaviour_id, { id: row.target_behaviour_id, description: row.target_description }));
@@ -155,6 +194,11 @@ export default function LlmResults() {
     const second = referenceMap.get(pair.second_behaviour_id)?.events;
     return currentReward(first, second, pair.reward);
   })).filter((value): value is number => value !== null)), [targetRows, referenceMap]);
+  const overallConditionStats = useMemo(() => CONDITIONS.map((condition) => {
+    const conditionRows = rows.filter((row) => row.condition === condition);
+    const values = conditionRows.map((row) => rowReward(row)).filter((value): value is number => value !== null);
+    return { condition, total: conditionRows.length, stats: statistics(values) };
+  }), [rows]);
 
 
   const unlock = () => {
@@ -163,27 +207,6 @@ export default function LlmResults() {
     setUnlocked(true);
     setMessage("LLM results viewer unlocked.");
   };
-  const uploadResults = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      const loaded = parseRows(await file.text());
-      if (!loaded.length) throw new Error("No LLM experiment rows found. Upload the completed results.jsonl file.");
-      setRows(loaded); setTargetId(""); setSplitIndex(-1); setMessage(`Loaded ${loaded.length} experiment calls for ${new Set(loaded.map((row) => row.target_behaviour_id)).size} held-out behaviors.`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not read experiment results."); }
-    finally { event.target.value = ""; }
-  };
-  const uploadReferences = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      const found = extractReferences(JSON.parse(await file.text()));
-      if (!found.size) throw new Error("No own designed behaviors found in this cleaned Prolific JSON.");
-      setReferenceMap(found); setMessage(`Loaded ${found.size} replayable reference behaviors from the cleaned Prolific data.`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not read cleaned Prolific data."); }
-    finally { event.target.value = ""; }
-  };
-
   if (!unlocked) return <main className="page-shell"><section className="hero"><div className="application-hero"><h1>LLM Results Viewer</h1></div><p className="intro-text">Enter the admin password to inspect the completed LLM experiment.</p></section><section className="controls-card admin-panel"><div className="toolbar admin-upload-row"><label className="field"><span>Password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => event.key === "Enter" && unlock()} /></label><button onClick={unlock}>Unlock</button></div>{message ? <p className="control-hint admin-message">{message}</p> : null}</section></main>;
 
   const targetBehaviour: Behaviour | null = selectedTarget ? { id: `${selectedTarget.target_behaviour_id}-target`, participantId: "Original participant behavior", runId: selectedTarget.target_behaviour_id, prompt: selectedTarget.target_description, rawPrompt: selectedTarget.target_description, condition: "Held-out target", events: selectedTarget.target_events } : null;
@@ -201,8 +224,9 @@ export default function LlmResults() {
 
   return <main className="page-shell reward-test-page llm-results-page">
     <section className="hero"><div className="application-hero"><h1>LLM Results Viewer</h1></div><p className="intro-text">Inspect every held-out participant behavior across all randomized splits and prompting conditions.</p></section>
-    <section className="controls-card admin-panel reward-controls"><div className="toolbar admin-upload-row"><label className="field field-wide"><span>1. Completed experiment results: results.jsonl</span><input type="file" accept=".jsonl,.json,application/json" onChange={uploadResults} /></label><label className="field field-wide"><span>2. Cleaned Prolific data: all-study-data-prolific-conditions.json</span><input type="file" accept=".json,application/json" onChange={uploadReferences} /></label></div><p className="control-hint">The manifest is not needed. The second file is only needed to replay the top-three references; the original behavior and all LLM outputs work with <code>results.jsonl</code> alone.</p>{rows.length ? <div className="toolbar admin-upload-row llm-selector-row"><label className="field field-wide"><span>1. Participant behavior description</span><select value={targetId} onChange={(event) => { setTargetId(event.target.value); setSplitIndex(-1); }}><option value="">Select a prompt</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.description} · {target.id}</option>)}</select></label>{targetId ? <label className="field"><span>2. Split containing this prompt</span><select value={splitIndex} onChange={(event) => setSplitIndex(Number(event.target.value))}><option value={-1}>Select a split</option>{splitOptions.map((split) => <option key={split} value={split}>Split {split + 1}</option>)}</select></label> : null}<button onClick={() => setPlayNonce((value) => value + 1)} disabled={!selectedTarget}>Play all displayed</button></div> : null}{message ? <p className="control-hint admin-message">{message}</p> : null}</section>
-    {!selectedTarget ? <section className="library-card llm-empty"><p>Upload the completed <code>results.jsonl</code> file to begin.</p></section> : <>
+    {rows.length ? <section className="library-card reward-condition-summary llm-overall-summary"><div className="library-header"><div><h2>Overall Experiment Statistics</h2><p>{new Set(rows.map((row) => row.target_behaviour_id)).size} held-out participant behaviors across {new Set(rows.map((row) => row.split_index)).size} randomized splits.</p></div></div><div className="reward-table-wrap"><table className="reward-table"><thead><tr><th>Condition</th><th>Completed calls</th><th>Valid outputs</th><th>Mean similarity</th><th>Median</th><th>Min</th><th>Max</th></tr></thead><tbody>{overallConditionStats.map(({ condition, total, stats }) => <tr key={condition}><th>{readableCondition(condition)}</th><td>{total}</td><td>{stats.count}</td><td>{stats.mean.toFixed(3)}</td><td>{stats.median.toFixed(3)}</td><td>{stats.minimum.toFixed(3)}</td><td>{stats.maximum.toFixed(3)}</td></tr>)}</tbody></table></div></section> : null}
+    <section className="controls-card admin-panel reward-controls llm-controls"><div className="toolbar admin-upload-row llm-selector-row"><label className="field field-wide"><span>1. Participant behavior description</span><select value={targetId} onChange={(event) => { setTargetId(event.target.value); setSplitIndex(-1); }} disabled={!targets.length}><option value="">{targets.length ? "Select a prompt" : "Loading prompts..."}</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.description} · {target.id}</option>)}</select></label>{targetId ? <label className="field"><span>2. Split containing this prompt</span><select value={splitIndex} onChange={(event) => setSplitIndex(Number(event.target.value))}><option value={-1}>Select a split</option>{splitOptions.map((split) => <option key={split} value={split}>Split {split + 1}</option>)}</select></label> : <div className="llm-split-placeholder">Select a prompt to choose a split.</div>}<button onClick={() => setPlayNonce((value) => value + 1)} disabled={!selectedTarget}>Play all displayed</button></div>{message ? <p className="control-hint admin-message">{message}</p> : null}</section>
+    {!selectedTarget ? <section className="library-card llm-empty"><p>Select a prompt, then one of its available splits to inspect the behaviors.</p></section> : <>
       <section className="library-card llm-selected-summary"><h2>Selected behavior</h2><p>{selectedTarget.target_description}</p><p className="control-hint">This behavior appears in {splitOptions.length} randomized splits. The selected split determines the exact closest-three references and all three LLM outputs shown below.</p></section>
       <section className="reward-gardens llm-gardens"><ReplayGarden behaviour={targetBehaviour} playNonce={playNonce} similarity={targetBehaviour ? 1 : null} />{predictionGardens.map((item, index) => <ReplayGarden key={CONDITIONS[index]} behaviour={item.behaviour} playNonce={playNonce} similarity={item.similarity} />)}</section>
       <section className="library-card reward-condition-summary"><div className="library-header"><div><h2>LLM Similarity to Original, Across All Splits</h2><p>Reward of each generated behavior against this participant&apos;s original implementation.</p></div></div><div className="reward-table-wrap"><table className="reward-table"><thead><tr><th>Condition</th><th>Valid calls</th><th>Mean</th><th>Median</th><th>Min</th><th>Max</th><th>Selected split</th></tr></thead><tbody>{conditionStats.map(({ condition, stats }) => <tr key={condition}><th>{readableCondition(condition)}</th><td>{stats.count}</td><td>{stats.mean.toFixed(3)}</td><td>{stats.median.toFixed(3)}</td><td>{stats.minimum.toFixed(3)}</td><td>{stats.maximum.toFixed(3)}</td><td>{score(rowReward(selectedByCondition.get(condition)))}</td></tr>)}</tbody></table></div></section>

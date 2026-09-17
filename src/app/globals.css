@@ -816,18 +816,32 @@ textarea {
 }
 
 /* Keep the prompt, split, and replay controls together on ordinary laptops. */
+.llm-selector-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 250px) auto;
+  align-items: end;
+}
+
+.llm-selector-row .field,
 .llm-selector-row .field-wide {
-  flex: 0 1 520px;
-  min-width: min(100%, 360px);
+  min-width: 0;
 }
 
-.llm-selector-row .field:not(.field-wide) {
-  flex: 0 1 230px;
-  min-width: 210px;
+.llm-split-placeholder {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
 }
 
-.llm-selector-row button {
-  flex: 0 0 auto;
+.llm-overall-summary {
+  margin-top: 22px;
+}
+
+@media (max-width: 900px) {
+  .llm-selector-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .reward-garden {
