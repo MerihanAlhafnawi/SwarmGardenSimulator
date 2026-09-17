@@ -815,6 +815,21 @@ textarea {
   margin-top: 16px;
 }
 
+/* Keep the prompt, split, and replay controls together on ordinary laptops. */
+.llm-selector-row .field-wide {
+  flex: 0 1 520px;
+  min-width: min(100%, 360px);
+}
+
+.llm-selector-row .field:not(.field-wide) {
+  flex: 0 1 230px;
+  min-width: 210px;
+}
+
+.llm-selector-row button {
+  flex: 0 0 auto;
+}
+
 .reward-garden {
   min-width: 0;
   padding: 16px;
@@ -835,6 +850,23 @@ textarea {
 .reward-garden-heading strong {
   color: var(--text);
   overflow-wrap: anywhere;
+}
+
+.reward-garden-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.reward-garden-score {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(209, 75, 42, 0.1);
+  color: #783421;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .reward-garden-heading span,

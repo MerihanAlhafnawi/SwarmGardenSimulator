@@ -87,6 +87,8 @@ const statistics = (values: number[]): Stats => {
 };
 
 const rewardNumber = (value: RewardValue | null | undefined) => typeof value?.reward === "number" ? value.reward : null;
+const currentReward = (first: RecordingEvent[] | undefined, second: RecordingEvent[] | undefined, fallback?: RewardValue | null) =>
+  first?.length && second?.length ? calculateReward(first, second).reward : rewardNumber(fallback);
 const readableCondition = (condition: ConditionName) => condition === "all_examples" ? "All database examples" : condition === "closest_three" ? "Closest three examples" : "Zero-shot";
 const score = (value: number | null | undefined) => typeof value === "number" ? value.toFixed(3) : "No valid output";
 
@@ -97,7 +99,7 @@ export default function LlmResults() {
   const [rows, setRows] = useState<ResultRow[]>([]);
   const [referenceMap, setReferenceMap] = useState<Map<string, ReferenceBehaviour>>(new Map());
   const [targetId, setTargetId] = useState("");
-  const [splitIndex, setSplitIndex] = useState(0);
+  const [splitIndex, setSplitIndex] = useState(-1);
   const [playNonce, setPlayNonce] = useState(0);
 
   useEffect(() => {
@@ -116,30 +118,44 @@ export default function LlmResults() {
   const selectedTarget = selectedRows[0];
   const closestRow = selectedByCondition.get("closest_three");
   const selectedReferences = closestRow?.top_k_retrieval ?? [];
+  const rowReward = (row: ResultRow | undefined) => row ? currentReward(row.target_events, row.predicted_events, row.reward) : null;
+  const targetVsReference = (row: ResultRow, reference: RetrievalItem) => {
+    const referenceEvents = referenceMap.get(reference.behaviour_id)?.events;
+    return currentReward(row.target_events, referenceEvents, reference.target_vs_reference_reward);
+  };
+  const predictionVsReference = (row: ResultRow, reference: RetrievalItem) => {
+    const referenceEvents = referenceMap.get(reference.behaviour_id)?.events;
+    const stored = row.top_k_comparison?.references?.find((item) => item.rank === reference.rank)?.prediction_vs_reference_reward;
+    return currentReward(row.predicted_events, referenceEvents, stored);
+  };
 
   const conditionStats = useMemo(() => CONDITIONS.map((condition) => ({
     condition,
-    stats: statistics(targetRows.filter((row) => row.condition === condition).map((row) => rewardNumber(row.reward)).filter((value): value is number => value !== null)),
+    // Recalculate from the recorded events so this page immediately reflects
+    // the current reward definition rather than a historical saved score.
+    stats: statistics(targetRows.filter((row) => row.condition === condition).map((row) => rowReward(row)).filter((value): value is number => value !== null)),
   })), [targetRows]);
   const retrievalStats = useMemo(() => {
     const closest = targetRows.filter((row) => row.condition === "closest_three");
     return [1, 2, 3].map((rank) => {
       const values = closest.flatMap((row) => {
         const item = row.top_k_comparison?.references?.find((reference) => reference.rank === rank) ?? row.top_k_retrieval?.find((reference) => reference.rank === rank);
-        return item ? [item] : [];
+        return item ? [{ row, item }] : [];
       });
       return {
         rank,
-        descriptionCosine: statistics(values.map((item) => item.description_cosine_similarity).filter((value): value is number => typeof value === "number")),
-        targetVsReference: statistics(values.map((item) => rewardNumber(item.target_vs_reference_reward)).filter((value): value is number => value !== null)),
-        predictionVsReference: statistics(values.map((item) => rewardNumber(item.prediction_vs_reference_reward)).filter((value): value is number => value !== null)),
+        descriptionCosine: statistics(values.map(({ item }) => item.description_cosine_similarity).filter((value): value is number => typeof value === "number")),
+        targetVsReference: statistics(values.map(({ row, item }) => targetVsReference(row, item)).filter((value): value is number => value !== null)),
+        predictionVsReference: statistics(values.map(({ row, item }) => predictionVsReference(row, item)).filter((value): value is number => value !== null)),
       };
     });
-  }, [targetRows]);
-  const pairwiseReferenceStats = useMemo(() => statistics(targetRows.filter((row) => row.condition === "closest_three").flatMap((row) => row.top_k_comparison?.pairwise_reference_rewards ?? []).map((pair) => rewardNumber(pair.reward)).filter((value): value is number => value !== null)), [targetRows]);
+  }, [targetRows, referenceMap]);
+  const pairwiseReferenceStats = useMemo(() => statistics(targetRows.filter((row) => row.condition === "closest_three").flatMap((row) => (row.top_k_comparison?.pairwise_reference_rewards ?? []).map((pair) => {
+    const first = referenceMap.get(pair.first_behaviour_id)?.events;
+    const second = referenceMap.get(pair.second_behaviour_id)?.events;
+    return currentReward(first, second, pair.reward);
+  })).filter((value): value is number => value !== null)), [targetRows, referenceMap]);
 
-  useEffect(() => { if (!targetId && targets[0]) setTargetId(targets[0].id); }, [targetId, targets]);
-  useEffect(() => { if (splitOptions.length && !splitOptions.includes(splitIndex)) setSplitIndex(splitOptions[0]); }, [splitIndex, splitOptions]);
 
   const unlock = () => {
     if (password !== ADMIN_PASSWORD) { setMessage("Incorrect password."); return; }
@@ -153,7 +169,7 @@ export default function LlmResults() {
     try {
       const loaded = parseRows(await file.text());
       if (!loaded.length) throw new Error("No LLM experiment rows found. Upload the completed results.jsonl file.");
-      setRows(loaded); setTargetId(""); setSplitIndex(0); setMessage(`Loaded ${loaded.length} experiment calls for ${new Set(loaded.map((row) => row.target_behaviour_id)).size} held-out behaviors.`);
+      setRows(loaded); setTargetId(""); setSplitIndex(-1); setMessage(`Loaded ${loaded.length} experiment calls for ${new Set(loaded.map((row) => row.target_behaviour_id)).size} held-out behaviors.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not read experiment results."); }
     finally { event.target.value = ""; }
   };
@@ -171,9 +187,12 @@ export default function LlmResults() {
   if (!unlocked) return <main className="page-shell"><section className="hero"><div className="application-hero"><h1>LLM Results Viewer</h1></div><p className="intro-text">Enter the admin password to inspect the completed LLM experiment.</p></section><section className="controls-card admin-panel"><div className="toolbar admin-upload-row"><label className="field"><span>Password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => event.key === "Enter" && unlock()} /></label><button onClick={unlock}>Unlock</button></div>{message ? <p className="control-hint admin-message">{message}</p> : null}</section></main>;
 
   const targetBehaviour: Behaviour | null = selectedTarget ? { id: `${selectedTarget.target_behaviour_id}-target`, participantId: "Original participant behavior", runId: selectedTarget.target_behaviour_id, prompt: selectedTarget.target_description, rawPrompt: selectedTarget.target_description, condition: "Held-out target", events: selectedTarget.target_events } : null;
-  const predictionGardens = CONDITIONS.map((condition): Behaviour | null => {
+  const predictionGardens = CONDITIONS.map((condition) => {
     const row = selectedByCondition.get(condition);
-    return row ? { id: `${row.target_behaviour_id}-${row.split_index}-${condition}`, participantId: readableCondition(condition), runId: `Similarity: ${score(rewardNumber(row.reward))}`, prompt: row.target_description, rawPrompt: row.target_description, condition, events: row.predicted_events ?? [] } : null;
+    return {
+      behaviour: row ? { id: `${row.target_behaviour_id}-${row.split_index}-${condition}`, participantId: readableCondition(condition), runId: "LLM prediction", prompt: row.target_description, rawPrompt: row.target_description, condition, events: row.predicted_events ?? [] } satisfies Behaviour : null,
+      similarity: rowReward(row),
+    };
   });
   const referenceGardens = selectedReferences.map((reference) => {
     const actual = referenceMap.get(reference.behaviour_id);
@@ -182,12 +201,12 @@ export default function LlmResults() {
 
   return <main className="page-shell reward-test-page llm-results-page">
     <section className="hero"><div className="application-hero"><h1>LLM Results Viewer</h1></div><p className="intro-text">Inspect every held-out participant behavior across all randomized splits and prompting conditions.</p></section>
-    <section className="controls-card admin-panel reward-controls"><div className="toolbar admin-upload-row"><label className="field field-wide"><span>1. Completed experiment results: results.jsonl</span><input type="file" accept=".jsonl,.json,application/json" onChange={uploadResults} /></label><label className="field field-wide"><span>2. Cleaned Prolific data: all-study-data-prolific-conditions.json</span><input type="file" accept=".json,application/json" onChange={uploadReferences} /></label></div><p className="control-hint">The manifest is not needed. The second file is only needed to replay the top-three references; the original behavior and all LLM outputs work with <code>results.jsonl</code> alone.</p>{rows.length ? <div className="toolbar admin-upload-row"><label className="field field-wide"><span>1. Participant behavior description</span><select value={targetId} onChange={(event) => setTargetId(event.target.value)}>{targets.map((target) => <option key={target.id} value={target.id}>{target.description} · {target.id}</option>)}</select></label><label className="field"><span>2. Randomized split</span><select value={splitIndex} onChange={(event) => setSplitIndex(Number(event.target.value))}>{splitOptions.map((split) => <option key={split} value={split}>Split {split + 1}</option>)}</select></label><button onClick={() => setPlayNonce((value) => value + 1)} disabled={!selectedTarget}>Play all displayed</button></div> : null}{message ? <p className="control-hint admin-message">{message}</p> : null}</section>
+    <section className="controls-card admin-panel reward-controls"><div className="toolbar admin-upload-row"><label className="field field-wide"><span>1. Completed experiment results: results.jsonl</span><input type="file" accept=".jsonl,.json,application/json" onChange={uploadResults} /></label><label className="field field-wide"><span>2. Cleaned Prolific data: all-study-data-prolific-conditions.json</span><input type="file" accept=".json,application/json" onChange={uploadReferences} /></label></div><p className="control-hint">The manifest is not needed. The second file is only needed to replay the top-three references; the original behavior and all LLM outputs work with <code>results.jsonl</code> alone.</p>{rows.length ? <div className="toolbar admin-upload-row llm-selector-row"><label className="field field-wide"><span>1. Participant behavior description</span><select value={targetId} onChange={(event) => { setTargetId(event.target.value); setSplitIndex(-1); }}><option value="">Select a prompt</option>{targets.map((target) => <option key={target.id} value={target.id}>{target.description} · {target.id}</option>)}</select></label>{targetId ? <label className="field"><span>2. Split containing this prompt</span><select value={splitIndex} onChange={(event) => setSplitIndex(Number(event.target.value))}><option value={-1}>Select a split</option>{splitOptions.map((split) => <option key={split} value={split}>Split {split + 1}</option>)}</select></label> : null}<button onClick={() => setPlayNonce((value) => value + 1)} disabled={!selectedTarget}>Play all displayed</button></div> : null}{message ? <p className="control-hint admin-message">{message}</p> : null}</section>
     {!selectedTarget ? <section className="library-card llm-empty"><p>Upload the completed <code>results.jsonl</code> file to begin.</p></section> : <>
       <section className="library-card llm-selected-summary"><h2>Selected behavior</h2><p>{selectedTarget.target_description}</p><p className="control-hint">This behavior appears in {splitOptions.length} randomized splits. The selected split determines the exact closest-three references and all three LLM outputs shown below.</p></section>
-      <section className="reward-gardens llm-gardens"><ReplayGarden behaviour={targetBehaviour} playNonce={playNonce} />{predictionGardens.map((behaviour, index) => <ReplayGarden key={CONDITIONS[index]} behaviour={behaviour} playNonce={playNonce} />)}</section>
-      <section className="library-card reward-condition-summary"><div className="library-header"><div><h2>LLM Similarity to Original, Across All Splits</h2><p>Reward of each generated behavior against this participant&apos;s original implementation.</p></div></div><div className="reward-table-wrap"><table className="reward-table"><thead><tr><th>Condition</th><th>Valid calls</th><th>Mean</th><th>Median</th><th>Min</th><th>Max</th><th>Selected split</th></tr></thead><tbody>{conditionStats.map(({ condition, stats }) => <tr key={condition}><th>{readableCondition(condition)}</th><td>{stats.count}</td><td>{stats.mean.toFixed(3)}</td><td>{stats.median.toFixed(3)}</td><td>{stats.minimum.toFixed(3)}</td><td>{stats.maximum.toFixed(3)}</td><td>{score(rewardNumber(selectedByCondition.get(condition)?.reward))}</td></tr>)}</tbody></table></div></section>
-      <section className="library-card reward-condition-summary"><div className="library-header"><div><h2>Closest-Three Reference Behaviors</h2><p>These are the three examples Claude saw only in the closest-three condition for this split.</p></div></div>{!referenceMap.size ? <p className="control-hint">Upload the cleaned Prolific JSON above to replay the top-three reference behaviors.</p> : <div className="reward-gardens llm-gardens">{referenceGardens.map((behaviour, index) => behaviour ? <ReplayGarden key={behaviour.id} behaviour={behaviour} playNonce={playNonce} /> : <p key={selectedReferences[index]?.behaviour_id} className="empty-state">Reference {index + 1} was not found in the uploaded data.</p>)}</div>}<div className="reward-table-wrap"><table className="reward-table"><thead><tr><th>Rank</th><th>Description cosine</th><th>Original vs reference</th><th>Closest-three LLM vs reference</th></tr></thead><tbody>{selectedReferences.map((reference) => { const comparison = closestRow?.top_k_comparison?.references?.find((item) => item.rank === reference.rank); return <tr key={reference.rank}><th>{reference.rank}: {reference.description}</th><td>{score(reference.description_cosine_similarity)}</td><td>{score(rewardNumber(reference.target_vs_reference_reward))}</td><td>{score(rewardNumber(comparison?.prediction_vs_reference_reward))}</td></tr>; })}</tbody></table></div><div className="reward-explainer llm-reference-pairs">{(closestRow?.top_k_comparison?.pairwise_reference_rewards ?? []).map((pair) => <span key={`${pair.first_behaviour_id}-${pair.second_behaviour_id}`}>Reference {selectedReferences.find((item) => item.behaviour_id === pair.first_behaviour_id)?.rank ?? "?"} vs {selectedReferences.find((item) => item.behaviour_id === pair.second_behaviour_id)?.rank ?? "?"}: {score(rewardNumber(pair.reward))}</span>)}</div></section>
+      <section className="reward-gardens llm-gardens"><ReplayGarden behaviour={targetBehaviour} playNonce={playNonce} similarity={targetBehaviour ? 1 : null} />{predictionGardens.map((item, index) => <ReplayGarden key={CONDITIONS[index]} behaviour={item.behaviour} playNonce={playNonce} similarity={item.similarity} />)}</section>
+      <section className="library-card reward-condition-summary"><div className="library-header"><div><h2>LLM Similarity to Original, Across All Splits</h2><p>Reward of each generated behavior against this participant&apos;s original implementation.</p></div></div><div className="reward-table-wrap"><table className="reward-table"><thead><tr><th>Condition</th><th>Valid calls</th><th>Mean</th><th>Median</th><th>Min</th><th>Max</th><th>Selected split</th></tr></thead><tbody>{conditionStats.map(({ condition, stats }) => <tr key={condition}><th>{readableCondition(condition)}</th><td>{stats.count}</td><td>{stats.mean.toFixed(3)}</td><td>{stats.median.toFixed(3)}</td><td>{stats.minimum.toFixed(3)}</td><td>{stats.maximum.toFixed(3)}</td><td>{score(rowReward(selectedByCondition.get(condition)))}</td></tr>)}</tbody></table></div></section>
+      <section className="library-card reward-condition-summary"><div className="library-header"><div><h2>Closest-Three Reference Behaviors</h2><p>These are the three examples Claude saw only in the closest-three condition for this split.</p></div></div>{!referenceMap.size ? <p className="control-hint">Upload the cleaned Prolific JSON above to replay the top-three reference behaviors.</p> : <div className="reward-gardens llm-gardens">{referenceGardens.map((behaviour, index) => behaviour ? <ReplayGarden key={behaviour.id} behaviour={behaviour} playNonce={playNonce} /> : <p key={selectedReferences[index]?.behaviour_id} className="empty-state">Reference {index + 1} was not found in the uploaded data.</p>)}</div>}<div className="reward-table-wrap"><table className="reward-table"><thead><tr><th>Rank</th><th>Description cosine</th><th>Original vs reference</th><th>Closest-three LLM vs reference</th></tr></thead><tbody>{selectedReferences.map((reference) => <tr key={reference.rank}><th>{reference.rank}: {reference.description}</th><td>{score(reference.description_cosine_similarity)}</td><td>{score(closestRow ? targetVsReference(closestRow, reference) : null)}</td><td>{score(closestRow ? predictionVsReference(closestRow, reference) : null)}</td></tr>)}</tbody></table></div><div className="reward-explainer llm-reference-pairs">{(closestRow?.top_k_comparison?.pairwise_reference_rewards ?? []).map((pair) => { const first = referenceMap.get(pair.first_behaviour_id)?.events; const second = referenceMap.get(pair.second_behaviour_id)?.events; return <span key={`${pair.first_behaviour_id}-${pair.second_behaviour_id}`}>Reference {selectedReferences.find((item) => item.behaviour_id === pair.first_behaviour_id)?.rank ?? "?"} vs {selectedReferences.find((item) => item.behaviour_id === pair.second_behaviour_id)?.rank ?? "?"}: {score(currentReward(first, second, pair.reward))}</span>; })}</div></section>
       <section className="library-card reward-condition-summary"><div className="library-header"><div><h2>Closest-Three Statistics, Across All Splits</h2><p>Reference retrieval and behavior similarity for this same held-out participant behavior.</p></div></div><div className="reward-table-wrap"><table className="reward-table"><thead><tr><th>Reference rank</th><th>Mean description cosine</th><th>Mean original vs reference</th><th>Mean LLM vs reference</th></tr></thead><tbody>{retrievalStats.map((item) => <tr key={item.rank}><th>Top {item.rank}</th><td>{item.descriptionCosine.mean.toFixed(3)} ({item.descriptionCosine.count})</td><td>{item.targetVsReference.mean.toFixed(3)} ({item.targetVsReference.count})</td><td>{item.predictionVsReference.mean.toFixed(3)} ({item.predictionVsReference.count})</td></tr>)}</tbody></table></div><p className="control-hint">Mean pairwise similarity among the three retrieved reference implementations: <strong>{pairwiseReferenceStats.mean.toFixed(3)}</strong> across {pairwiseReferenceStats.count} reference pairs.</p></section>
     </>}</main>;
 }

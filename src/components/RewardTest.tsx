@@ -243,13 +243,7 @@ const selectedColorSimilarity = (first: RecordingEvent, second: RecordingEvent) 
   const secondData = second.data ?? {};
   const firstSelected = selectedIndices(firstData.selected);
   const secondSelected = selectedIndices(secondData.selected);
-  const firstColor = firstData.color;
-  const secondColor = secondData.color;
-  let total = 0;
-  for (let index = 0; index < ROBOT_COUNT; index += 1) {
-    total += colorSimilarity(firstSelected.has(index) ? firstColor : DEFAULT_COLOR, secondSelected.has(index) ? secondColor : DEFAULT_COLOR);
-  }
-  return total / ROBOT_COUNT;
+  return selectedActionSimilarity(firstSelected, secondSelected, colorSimilarity(firstData.color, secondData.color));
 };
 
 const selectedBuckleSimilarity = (first: RecordingEvent, second: RecordingEvent) => {
@@ -257,11 +251,18 @@ const selectedBuckleSimilarity = (first: RecordingEvent, second: RecordingEvent)
   const secondData = second.data ?? {};
   const firstSelected = selectedIndices(firstData.selected);
   const secondSelected = selectedIndices(secondData.selected);
-  let total = 0;
-  for (let index = 0; index < ROBOT_COUNT; index += 1) {
-    total += buckleSimilarity(firstSelected.has(index) ? firstData.val : DEFAULT_LEVEL, secondSelected.has(index) ? secondData.val : DEFAULT_LEVEL);
-  }
-  return total / ROBOT_COUNT;
+  return selectedActionSimilarity(firstSelected, secondSelected, buckleSimilarity(firstData.val, secondData.val));
+};
+
+const selectedActionSimilarity = (first: Set<number>, second: Set<number>, propertySimilarity: number) => {
+  // Property is most important, while equal-sized selections receive credit
+  // even when they cover different regions of the swarm.
+  const coverageSimilarity = 1 - Math.abs(first.size - second.size) / ROBOT_COUNT;
+  const union = new Set([...first, ...second]);
+  const overlapSimilarity = union.size
+    ? [...first].filter((index) => second.has(index)).length / union.size
+    : 1;
+  return 0.5 * propertySimilarity + 0.3 * coverageSimilarity + 0.2 * overlapSimilarity;
 };
 
 // This is the reward definition agreed for the study analysis.  Only actions
@@ -458,7 +459,7 @@ const eventDuration = (event: RecordingEvent) => {
   return 300;
 };
 
-export function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | null; playNonce: number }) {
+export function ReplayGarden({ behaviour, playNonce, similarity }: { behaviour: Behaviour | null; playNonce: number; similarity?: number | null }) {
   const [grid, setGrid] = useState<Cell[][]>(() => createGrid());
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -561,7 +562,7 @@ export function ReplayGarden({ behaviour, playNonce }: { behaviour: Behaviour | 
   return (
     <article className="reward-garden">
       <div className="reward-garden-heading">
-        <strong>{behaviour?.participantId ?? "Select a participant"}</strong>
+        <div className="reward-garden-title"><strong>{behaviour?.participantId ?? "Select a participant"}</strong>{typeof similarity === "number" ? <span className="reward-garden-score">Similarity to original: {similarity.toFixed(3)}</span> : null}</div>
         <div className="reward-garden-actions">
           <span>{behaviour ? `${behaviour.events.length} steps${isPlaying && activeStep !== null ? ` · Playing step ${activeStep + 1}` : ""}` : ""}</span>
           <button className="ghost reward-play-button" onClick={() => setLocalPlayNonce((current) => current + 1)} disabled={!behaviour || isPlaying}>{isPlaying ? "Playing" : "Play"}</button>
